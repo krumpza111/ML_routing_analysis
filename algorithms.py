@@ -2,7 +2,6 @@ from network_obj import *
 from collections import deque 
 import heapq
 import random
-import sys
 
 '''
 UNIFORM COST SEARCH / DJIKSTRAS / SPF FUNCTIONS
@@ -130,6 +129,7 @@ def create_initial_population(nodes, start, goal, pop):
         subset_size = random.randint(1, len(node_list)) 
         random_subset = random.sample(node_list, subset_size)
         route = [start] + random_subset + [goal] 
+        #print_path(route)
 
         valid_route = True 
         for i in range(len(route) - 1):
@@ -197,7 +197,7 @@ def mutate(nodes, chromosome, mutation_rate):
         chromosome.delay = delay 
         chromosome.fitness = chromosome.calculate_fitness()
 
-def genetic_algorithm(nodes, start, goal, pop=100, generations=15, init_mutation_rate=0.01):
+def genetic_algorithm(nodes, start, goal, pop=150, generations=20, init_mutation_rate=0.01):
     population = create_initial_population(nodes, start, goal, pop)
     mutation_rate = init_mutation_rate 
     best_fitness = 0 
@@ -231,7 +231,7 @@ def genetic_algorithm(nodes, start, goal, pop=100, generations=15, init_mutation
             stagnant_generations += 1 
 
         # Adjust mutation rate if no improvement seen 
-        if stagnant_generations > 8:
+        if stagnant_generations > 15:
             mutation_rate *= 1.2 
         else:
             mutation_rate = max(init_mutation_rate, mutation_rate * 0.98) #gradually reduce mutation rate

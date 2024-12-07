@@ -2,7 +2,7 @@ from network_obj import *
 from algorithms import *
 import copy
 
-# Set up for creating a network
+# Set up for creating small-sized networks
 def network1a():
     edges = {('A', 'B'): 9, ('A', 'C'): 13, ('B', 'C'): 10, ('B', 'D'): 8, ('C', 'G'): 5, ('D', 'G'): 3}
     nodes = {name: Node(name) for name in ['A', 'B', 'C', 'D', 'G']}
@@ -25,6 +25,20 @@ def network1b():
     nodes['E'].set_delay(3, 1)
     nodes['G'].set_delay(4, 3)
     return nodes, edges 
+
+# Set up for creating medium-sized networks
+def network2a():
+    edges = {('A', 'B'): 1, ('A', 'C'): 3, ('B', 'D'): 2, ('C', 'F'): 2, ('D', 'F'): 1, ('C', 'E'): 6, ('F', 'G'): 5, ('E', 'G'): 2}
+    nodes = {name: Node(name) for name in ['A', 'B', 'C', 'D', 'E', 'F', 'G']}
+    config_graph(nodes, edges)
+    nodes['A'].set_delay(2, 2)
+    nodes['B'].set_delay(1, 2)
+    nodes['C'].set_delay(3, 4)
+    nodes['D'].set_delay(3, 1)
+    nodes['E'].set_delay(4, 5)
+    nodes['F'].set_delay(2, 1)
+    nodes['G'].set_delay(3, 2)
+    return nodes, edges
 
 # Prints results after running a algorithm
 def print_results(path, packets, distance, delays):
@@ -103,3 +117,7 @@ if __name__ == "__main__":
     print("          Running second network")
     print("===========================================")
     run_simulation(network1b, packets)
+    print("===========================================")
+    print("          Running third network")
+    print("===========================================")
+    run_simulation(network2a, packets)
