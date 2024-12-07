@@ -3,7 +3,7 @@ from algorithms import *
 
 # Set up for creating a network
 def network1a():
-    edges = {('A', 'B'): 9, ('B', 'C'): 10, ('B', 'D'): 8, ('C', 'E'): 5, ('D', 'E'): 3}
+    edges = {('A', 'B'): 9, ('A', 'C'): 13, ('B', 'C'): 10, ('B', 'D'): 8, ('C', 'E'): 5, ('D', 'E'): 3}
     nodes = {name: Node(name) for name in ['A', 'B', 'C', 'D', 'E']}
     config_graph(nodes, edges)
     nodes['A'].set_delay(5, 2) 
@@ -14,15 +14,18 @@ def network1a():
     return nodes, edges
 
 # Prints results after running a algorithm
-def print_results(path, packets, distance, delay):
+def print_results(path, packets, distance, delays):
     print("Path: ", end='')
     for p in path:
         print(p, end=' ')
     print()
     print("Distance: ", distance)
-    print("Total delay incurred: ", delay)
+    print("Total Nodal Delay: ", sum(delays))
+    for d in delays:
+        print(str(d) + ", ", end=' ')
+    print()
     for p in packets:
-        print("Packet " + str(p) + "Packet GID: " + str(p.gid) + "Delay (one way): " + str(p.delay) + "ms")
+        print("Packet Details: " + str(p) + " Packet GID: " + str(p.gid) + " Delay (one way): " + str(p.delay) + "ms")
 
 # Function for running a packet simulation through a network
 def run_simulation(network, packet_cluster):
@@ -37,22 +40,34 @@ def run_simulation(network, packet_cluster):
     for p in packet_cluster:
         packets.extend(p.create_children()) 
         group_ids.append(p.gid)
+    
+    delays = []
 
     # running uniform cost search 
     path, distance = uniform_cost_search(start, goal) 
     print("UNIFORM COST SEARCH") 
     for id in group_ids:
-        delay = packet_group_transmission(path, packets, id)
-        print_results(path, packets, distance, delay)
-
+        delays.append(packet_group_transmission(path, packets, id))
+    print_results(path, packets, distance, delays)
+    delays = []
     reset_packets(packets) 
 
     #running a star search 
     path, distance = a_star_search(start, goal) 
     print("A STAR SEARCH")
     for id in group_ids:
-        delay = packet_group_transmission(path, packets, id)
-        print_results(path, packets, distance, delay)
+        delays.append(packet_group_transmission(path, packets, id))
+
+    print_results(path, packets, distance, delays)
+    delays = []
+    reset_packets(packets)
+
+    #running genetic algorithms 
+    path, distance = genetic_algorithm(nodes, start, goal) 
+    print("GENETIC ALGORITHM")
+    for id in group_ids:
+        delays.append(packet_group_transmission(path, packets, id))
+    print_results(path, packets, distance, delays)
 
 if __name__ == "__main__":
     '''

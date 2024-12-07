@@ -9,7 +9,7 @@ MAX_THROUGHPUT = 1024
 class Node:
     def __init__(self, name):
         self.name = name 
-        self.neighbors = {}
+        self.neighbors = {} # format is Node: {'cost': cost}
         self.delay = 0 
         self.prop_delay = 0
         self.traffic = 0.0
@@ -31,7 +31,7 @@ class Node:
         self.traffic = n 
 
     # Adds delay to packets as they pass through router
-    def process_packet(self, packet):
+    def process_packet(self, packet, next_node):
         # process 
         if not isinstance(packet, Packet):
             return None
@@ -39,7 +39,12 @@ class Node:
         if packet.size < MAX_THROUGHPUT:
             bandwidth = packet.size / MAX_THROUGHPUT
         if packet.first == True:
-            packet.delay += self.prop_delay 
+            if next_node == None:
+                packet.delay += self.delay
+            else:
+                path_cost = self.neighbors[next_node] 
+                print("path cost is " + str(path_cost) + " and the next node is " + str(next_node) + " with propogation delay " + str(next_node.prop_delay))
+                packet.delay += (next_node.prop_delay + path_cost)
         packet.delay += (self.delay * bandwidth)
         return 
     
@@ -97,8 +102,9 @@ def packet_group_transmission(path, packets, gid):
     total_delay = 0
     for p in packets:
         if p.gid == gid:
-            for node in path:
-                node.process_packet(p) 
+            for i in range(len(path) - 1):
+                path[i].process_packet(p, path[i + 1]) 
+            path[len(path) - 1].process_packet(p, None)
             total_delay += p.delay
     return total_delay
 
@@ -107,4 +113,8 @@ def reset_packets(packets):
     for p in packets:
         p.reset_delay() 
     
-    
+def print_path(path):
+    string_builder = ""
+    for node in path:
+        string_builder += str(node) + " "
+    print(string_builder)
