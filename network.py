@@ -1,17 +1,30 @@
 from network_obj import *
 from algorithms import *
+import copy
 
 # Set up for creating a network
 def network1a():
-    edges = {('A', 'B'): 9, ('A', 'C'): 13, ('B', 'C'): 10, ('B', 'D'): 8, ('C', 'E'): 5, ('D', 'E'): 3}
-    nodes = {name: Node(name) for name in ['A', 'B', 'C', 'D', 'E']}
+    edges = {('A', 'B'): 9, ('A', 'C'): 13, ('B', 'C'): 10, ('B', 'D'): 8, ('C', 'G'): 5, ('D', 'G'): 3}
+    nodes = {name: Node(name) for name in ['A', 'B', 'C', 'D', 'G']}
     config_graph(nodes, edges)
     nodes['A'].set_delay(5, 2) 
     nodes['B'].set_delay(3, 1)
     nodes['C'].set_delay(6, 1) 
     nodes['D'].set_delay(4, 1)
-    nodes['E'].set_delay(5, 2) 
+    nodes['G'].set_delay(5, 2) 
     return nodes, edges
+
+def network1b():
+    edges = {('A', 'B'): 1, ('A', 'G'): 12, ('B', 'C'): 1, ('C', 'G'): 2, ('B', 'D'): 2, ('D', 'E'): 3, ('C', 'E'): 1, ('E', 'G'): 3}
+    nodes = {name: Node(name) for name in ['A', 'B', 'C', 'D', 'E', 'G']}
+    config_graph(nodes, edges)
+    nodes['A'].set_delay(2, 2)
+    nodes['B'].set_delay(3, 2) 
+    nodes['C'].set_delay(2, 1)
+    nodes['D'].set_delay(3, 2)
+    nodes['E'].set_delay(3, 1)
+    nodes['G'].set_delay(4, 3)
+    return nodes, edges 
 
 # Prints results after running a algorithm
 def print_results(path, packets, distance, delays):
@@ -22,22 +35,21 @@ def print_results(path, packets, distance, delays):
     print("Distance: ", distance)
     print("Total Nodal Delay: ", sum(delays))
     for d in delays:
-        print(str(d) + ", ", end=' ')
+        print(str(d) + " ", end=' ')
     print()
     for p in packets:
         print("Packet Details: " + str(p) + " Packet GID: " + str(p.gid) + " Delay (one way): " + str(p.delay) + "ms")
 
 # Function for running a packet simulation through a network
 def run_simulation(network, packet_cluster):
-    print("Have entered function")
     # Setting up network
     nodes, edges = network() 
-    print("After calling function in ")
-    start, goal = nodes['A'], nodes['E'] 
+    start, goal = nodes['A'], nodes['G'] 
     # Setting up packets
     group_ids = []
-    packets = packet_cluster.copy()
-    for p in packet_cluster:
+    packet_cluster_copy = copy.deepcopy(packet_cluster)
+    packets = copy.deepcopy(packet_cluster)
+    for p in packet_cluster_copy:
         packets.extend(p.create_children()) 
         group_ids.append(p.gid)
     
@@ -79,6 +91,15 @@ if __name__ == "__main__":
     packets = []
     packet1 = Packet(1, 5100, True) 
     packet2 = Packet(2, 2048, True)
+    packet3 = Packet(3, 3871, True)
     packets.append(packet1)
     packets.append(packet2)
+    packets.append(packet3)
+    print("===========================================")
+    print("          Running first network")
+    print("===========================================")
     run_simulation(network1a, packets)
+    print("===========================================")
+    print("          Running second network")
+    print("===========================================")
+    run_simulation(network1b, packets)

@@ -14,6 +14,9 @@ class Node:
         self.prop_delay = 0
         self.traffic = 0.0
 
+    def __lt__(self, other):
+        return self.delay < other.delay
+
     # Creates adjacency list showing adjacent nodes and related cost
     def add_neighbor(self, neighbor, cost):
         self.neighbors[neighbor] = cost
@@ -40,10 +43,10 @@ class Node:
             bandwidth = packet.size / MAX_THROUGHPUT
         if packet.first == True:
             if next_node == None:
-                packet.delay += self.delay
+                packet.delay += self.prop_delay
             else:
                 path_cost = self.neighbors[next_node] 
-                print("path cost is " + str(path_cost) + " and the next node is " + str(next_node) + " with propogation delay " + str(next_node.prop_delay))
+                #print("path cost is " + str(path_cost) + " and the next node is " + str(next_node) + " with propogation delay " + str(next_node.prop_delay))
                 packet.delay += (next_node.prop_delay + path_cost)
         packet.delay += (self.delay * bandwidth)
         return 
