@@ -40,6 +40,25 @@ def network2a():
     nodes['G'].set_delay(3, 2)
     return nodes, edges
 
+# Set up for large-sized networks 
+def network3a():
+    edges = {('A', 'B'): 4, ('A', 'C'): 7, ('A', 'D'): 9, ('B', 'C'): 8, ('B', 'H'): 5, ('C', 'H'): 3, ('D', 'H'): 6, ('D', 'E'): 10, ('E', 'F'): 2, ('H', 'J'): 5, ('H', 'I'): 15, ('H', 'F'): 6, ('J', 'K'): 4, ('J', 'I'): 3, ('K', 'L'): 6, ('K', 'I'): 5, ('I', 'L'): 3, ('E', 'G'): 17, ('F', 'G'): 10, ('I', 'G'): 5, ('L', 'G'): 7}
+    nodes = {name: Node(name) for name in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']}
+    config_graph(nodes, edges)
+    nodes['A'].set_delay(2, 2)
+    nodes['B'].set_delay(3, 3)
+    nodes['C'].set_delay(3, 2)
+    nodes['D'].set_delay(3, 2)
+    nodes['E'].set_delay(2, 1)
+    nodes['F'].set_delay(2, 1)
+    nodes['G'].set_delay(2, 2)
+    nodes['H'].set_delay(4, 3)
+    nodes['I'].set_delay(2, 2)
+    nodes['J'].set_delay(2, 1)
+    nodes['K'].set_delay(2, 2)
+    nodes['L'].set_delay(1, 1)
+    return nodes, edges
+
 # Prints results after running a algorithm
 def print_results(path, packets, distance, delays):
     print("Path: ", end='')
@@ -95,6 +114,36 @@ def run_simulation(network, packet_cluster):
         delays.append(packet_group_transmission(path, packets, id))
     print_results(path, packets, distance, delays)
 
+def run_dynamic_simulation(network, packet_cluster):
+    nodes, edges = network()
+    start, goal = nodes['A'], nodes['G']
+    group_ids = [] 
+    packet_cluster_copy = packet_cluster.copy() 
+    packets = packet_cluster.copy() 
+    for p in packet_cluster_copy:
+        packets.extend(p.create_children()) 
+        group_ids.append(p.gid)
+    
+    delays = [] 
+    best_path = [] 
+    best_distance = 0 
+
+    # running uniform cost search
+    best_path, best_distance = a_star_search(start, goal)
+    print("DYNAMIC A STAR SEARCH") 
+    for id in group_ids:
+        delays.append(dynamic_packet_group_transmission(best_path, packets, id))
+        temp_path, temp_distance = a_star_search(start, goal)
+        if temp_path != best_path:
+            print("Better path found!")
+            print("Old Distance " + str(best_distance) + " Old path: ", end="")
+            print_path(best_path) 
+            print("New distance: " + str(temp_distance) + " New path: ", end="")
+            print_path(temp_path)
+            best_path = temp_path 
+            best_distance = temp_distance 
+    print_results(best_path, packets, best_distance, delays)
+
 if __name__ == "__main__":
     '''
     General outline for running:
@@ -109,6 +158,7 @@ if __name__ == "__main__":
     packets.append(packet1)
     packets.append(packet2)
     packets.append(packet3)
+    '''
     print("===========================================")
     print("          Running first network")
     print("===========================================")
@@ -121,3 +171,9 @@ if __name__ == "__main__":
     print("          Running third network")
     print("===========================================")
     run_simulation(network2a, packets)
+    '''
+    print("===========================================")
+    print("      Running first dynamic network")
+    print("===========================================")
+    run_dynamic_simulation(network2a, packets)
+

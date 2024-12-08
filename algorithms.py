@@ -3,6 +3,9 @@ from collections import deque
 import heapq
 import random
 
+
+BANDWIDTH = 10
+
 '''
 UNIFORM COST SEARCH / DJIKSTRAS / SPF FUNCTIONS
 '''
@@ -39,9 +42,9 @@ def a_star_heuristic(node, goal):
     for node in node.neighbors:
         if node == goal:
             return 0
-    traffic_intensity = 10 * node.traffic 
+    traffic_intensity = 1 + node.traffic / BANDWIDTH
     delay_penalty = node.delay
-    return 1 + traffic_intensity + delay_penalty
+    return delay_penalty * node.traffic 
 
 def a_star_search(start, goal):
     frontier = [] 
@@ -50,6 +53,7 @@ def a_star_search(start, goal):
     heapq.heappush(frontier, (0, iter, start)) 
     path_costs = {start: 0} # path cost seen dictionary
     path = {start: None} # path to a given node dictionary
+    f_scores = {start: a_star_heuristic(start, goal)}
 
     while frontier:
         # pop from queue. curr_score: f(n) = g(n) + h(n)
@@ -57,7 +61,7 @@ def a_star_search(start, goal):
         if curr_node == goal:
             path = reconstruct_path(path, goal) 
             path.reverse()
-            return path, path_costs[goal] 
+            return path, f_scores[goal]
         # for each neighbor of current node
         for neighbor, cost in curr_node.neighbors.items():
             temp_cost = path_costs[curr_node] + cost 
@@ -67,6 +71,7 @@ def a_star_search(start, goal):
                 path[neighbor] = curr_node 
                 path_costs[neighbor] = temp_cost 
                 f_score = temp_cost + a_star_heuristic(neighbor, goal) 
+                f_scores[neighbor] = f_score
                 iter += 1
                 heapq.heappush(frontier, (f_score, iter, neighbor))
     return None # no path found

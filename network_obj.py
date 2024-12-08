@@ -1,6 +1,7 @@
 from collections import deque
 
 MAX_THROUGHPUT = 1024
+BANDWIDTH = 10
 
 # Class to create a node
 # Each node is meant to represent a router so its attributes are:
@@ -21,10 +22,12 @@ class Node:
     def add_neighbor(self, neighbor, cost):
         self.neighbors[neighbor] = cost
 
+    # Sets the nodes delay
     def set_delay(self, node_delay, prop_delay):
         self.delay = node_delay 
         self.prop_delay = prop_delay 
 
+    # Sets the traffic intensity
     def set_traffic(self, n):
         # Must be bounded 
         if n > 1:
@@ -38,9 +41,9 @@ class Node:
         # process 
         if not isinstance(packet, Packet):
             return None
-        bandwidth = 1.0
+        throughput = 1.0
         if packet.size < MAX_THROUGHPUT:
-            bandwidth = packet.size / MAX_THROUGHPUT
+            throughput = packet.size / MAX_THROUGHPUT
         if packet.first == True:
             if next_node == None:
                 packet.delay += self.prop_delay
@@ -48,8 +51,24 @@ class Node:
                 path_cost = self.neighbors[next_node] 
                 #print("path cost is " + str(path_cost) + " and the next node is " + str(next_node) + " with propogation delay " + str(next_node.prop_delay))
                 packet.delay += (next_node.prop_delay + path_cost)
-        packet.delay += (self.delay * bandwidth)
+        packet.delay += (self.delay * throughput)
         return 
+    
+    def process_packet_dyn(self, packet, next_node):
+        if not isinstance(packet, Packet):
+            return None
+        throughput = 1.0 
+        if packet.size < MAX_THROUGHPUT:
+            throughput = packet.size / MAX_THROUGHPUT
+        if packet.first == True:
+            if next_node == None:
+                packet.delay += self.prop_delay
+            else:
+                path_cost = self.neighbors[next_node] 
+                packet.delay += (next_node.prop_delay + path_cost)
+        self.traffic += 1 # increases traffic by one for each packet 
+        packet.delay += (self.delay * throughput) + self.traffic
+        return
     
     # print string
     def __str__(self):
@@ -111,11 +130,22 @@ def packet_group_transmission(path, packets, gid):
             total_delay += p.delay
     return total_delay
 
+def dynamic_packet_group_transmission(path, packets, gid):
+    total_delay = 0 
+    for p in packets:
+        if p.gid == gid:
+            for i in range(len(path) - 1):
+                path[i].process_packet_dyn(p, path[i + 1]) 
+            path[len(path) - 1].process_packet_dyn(p, None)
+            total_delay += p.delay 
+    return total_delay
+
 # resets all packets in a packet cluster
 def reset_packets(packets):
     for p in packets:
         p.reset_delay() 
     
+# function that prints out a list of nodes in order
 def print_path(path):
     string_builder = ""
     for node in path:
