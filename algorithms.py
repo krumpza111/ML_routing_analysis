@@ -35,6 +35,7 @@ def uniform_cost_search(start, goal):
 
 '''
 A STAR SEARCH FUNCTIONS
+A STAR SEARCH (Minimal delay and traffic intensity favored)
 '''
 # The A-Star Heuristic is to avoid high traffic intensity areas and high nodal delay areas
 # The idea is that by avoiding congestion we will have lower transmission times
@@ -71,6 +72,48 @@ def a_star_search(start, goal):
                 path[neighbor] = curr_node 
                 path_costs[neighbor] = temp_cost 
                 f_score = temp_cost + a_star_heuristic(neighbor, goal) 
+                f_scores[neighbor] = f_score
+                iter += 1
+                heapq.heappush(frontier, (f_score, iter, neighbor))
+    return None # no path found
+
+'''
+A STAR SEARCH (Distance favored)
+'''
+def a_star_d_heuristic(node, goal):
+    for n in node.neighbors:
+        if n == goal:
+            return 0
+    neighbor_distance = min(distance for _, distance in node.neighbors.items()) 
+    traffic_intensity = 1 + node.traffic / BANDWIDTH
+    delay_penalty = node.delay
+    return (neighbor_distance * 0.7) + (traffic_intensity * 0.2) + (delay_penalty * 0.1)
+
+def a_star_d_search(start, goal):
+    frontier = [] 
+    # Priority queue, reached dictionary 
+    iter = 0 #iteration since priority queues don't allow duplicate nodes
+    heapq.heappush(frontier, (0, iter, start)) 
+    path_costs = {start: 0} # path cost seen dictionary
+    path = {start: None} # path to a given node dictionary
+    f_scores = {start: a_star_d_heuristic(start, goal)}
+
+    while frontier:
+        # pop from queue. curr_score: f(n) = g(n) + h(n)
+        _, _, curr_node = heapq.heappop(frontier) 
+        if curr_node == goal:
+            path = reconstruct_path(path, goal) 
+            path.reverse()
+            return path, f_scores[goal]
+        # for each neighbor of current node
+        for neighbor, cost in curr_node.neighbors.items():
+            temp_cost = path_costs[curr_node] + cost 
+            
+            # only update path if the lowest cost is seen 
+            if neighbor not in path_costs or temp_cost < path_costs[neighbor]:
+                path[neighbor] = curr_node 
+                path_costs[neighbor] = temp_cost 
+                f_score = temp_cost + a_star_d_heuristic(neighbor, goal) 
                 f_scores[neighbor] = f_score
                 iter += 1
                 heapq.heappush(frontier, (f_score, iter, neighbor))
@@ -202,7 +245,7 @@ def mutate(nodes, chromosome, mutation_rate):
         chromosome.delay = delay 
         chromosome.fitness = chromosome.calculate_fitness()
 
-def genetic_algorithm(nodes, start, goal, pop=150, generations=20, init_mutation_rate=0.01):
+def genetic_algorithm(nodes, start, goal, pop=200, generations=20, init_mutation_rate=0.01):
     population = create_initial_population(nodes, start, goal, pop)
     mutation_rate = init_mutation_rate 
     best_fitness = 0 

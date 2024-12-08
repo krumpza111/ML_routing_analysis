@@ -13,7 +13,7 @@ class Node:
         self.neighbors = {} # format is Node: {'cost': cost}
         self.delay = 0 
         self.prop_delay = 0
-        self.traffic = 0.0
+        self.traffic = 0
 
     def __lt__(self, other):
         return self.delay < other.delay
@@ -35,6 +35,10 @@ class Node:
         elif n < 0:
             n = 0 
         self.traffic = n 
+    
+    # resets traffic intensity to zero 
+    def reset_traffic(self):
+        self.traffic = 0
 
     # Adds delay to packets as they pass through router
     def process_packet(self, packet, next_node):
@@ -54,6 +58,7 @@ class Node:
         packet.delay += (self.delay * throughput)
         return 
     
+    # Adds delay and increases traffic intensity as packets pass through the network
     def process_packet_dyn(self, packet, next_node):
         if not isinstance(packet, Packet):
             return None
@@ -119,7 +124,7 @@ def simulate_package_transmission(path, packet):
         node.process_packet(packet)
         total_delay += packet.delay + node.traffic 
 
-# Simulates transmission and adds all packets together of a certatin group id
+# Simulates transmission and adds delays of all packets together of a certatin group id
 def packet_group_transmission(path, packets, gid):
     total_delay = 0
     for p in packets:
@@ -130,6 +135,7 @@ def packet_group_transmission(path, packets, gid):
             total_delay += p.delay
     return total_delay
 
+# Simulates a dynamic transmission and adds delays of all packets of a certain group id
 def dynamic_packet_group_transmission(path, packets, gid):
     total_delay = 0 
     for p in packets:
@@ -145,6 +151,11 @@ def reset_packets(packets):
     for p in packets:
         p.reset_delay() 
     
+# resets all node traffic in the network
+def reset_traffic(nodes):
+    for node in nodes:
+        node.reset_traffic()
+
 # function that prints out a list of nodes in order
 def print_path(path):
     string_builder = ""

@@ -114,6 +114,7 @@ def run_simulation(network, packet_cluster):
         delays.append(packet_group_transmission(path, packets, id))
     print_results(path, packets, distance, delays)
 
+# Function for running a packet simulation through a dynamic network
 def run_dynamic_simulation(network, packet_cluster):
     nodes, edges = network()
     start, goal = nodes['A'], nodes['G']
@@ -158,7 +159,6 @@ if __name__ == "__main__":
     packets.append(packet1)
     packets.append(packet2)
     packets.append(packet3)
-    '''
     print("===========================================")
     print("          Running first network")
     print("===========================================")
@@ -171,9 +171,13 @@ if __name__ == "__main__":
     print("          Running third network")
     print("===========================================")
     run_simulation(network2a, packets)
-    '''
     print("===========================================")
+    print("          Running fourth network")
+    print("===========================================")
+    run_simulation(network3a, packets)
+
+    '''print("===========================================")
     print("      Running first dynamic network")
     print("===========================================")
-    run_dynamic_simulation(network2a, packets)
+    run_dynamic_simulation(network2a, packets)'''
 
