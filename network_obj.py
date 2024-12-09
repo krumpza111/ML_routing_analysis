@@ -158,7 +158,13 @@ def reset_traffic(nodes):
 
 # function that prints out a list of nodes in order
 def print_path(path):
+    if path is None:
+        print("Error: path is empty")
+        return
     string_builder = ""
     for node in path:
+        if node == None:
+            string_builder += " None "
+            continue
         string_builder += str(node) + " "
     print(string_builder)

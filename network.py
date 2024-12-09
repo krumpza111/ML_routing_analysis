@@ -98,13 +98,43 @@ def run_simulation(network, packet_cluster):
     reset_packets(packets) 
 
     #running a star search 
-    path, distance = a_star_search(start, goal) 
+    path, distance = a_star_search(start, goal, a_star_heuristic) 
     print("A STAR SEARCH")
     for id in group_ids:
         delays.append(packet_group_transmission(path, packets, id))
 
     print_results(path, packets, distance, delays)
     delays = []
+    reset_packets(packets)
+
+    # A-Star search varient
+    path, distance = a_star_search(start, goal, a_star_d_heuristic) 
+    print("A STAR SEARCH WITH DISTANCE HEURISTIC") 
+    for id in group_ids:
+        delays.append(packet_group_transmission(path, packets, id))
+    
+    print_results(path, packets, distance, delays) 
+    delays = [] 
+    reset_packets(packets)
+
+    #running greedy best first search 
+    path, distance = gbfs(start, goal, gbfs_distance_heuristic)
+    print("GREEDY BEST FIRST SEARCH") 
+    for id in group_ids:
+        delays.append(packet_group_transmission(path, packets, id)) 
+
+    print_results(path, packets, distance, delays)
+    delays = [] 
+    reset_packets(packets)
+
+    # GBFS search varient
+    path, distance = gbfs(start, goal, gbfs_combined_heuristic)
+    print("GREEDY BEST FIRST SEARCH WITH COMBINED HEURISTIC") 
+    for id in group_ids:
+        delays.append(packet_group_transmission(path, packets, id)) 
+
+    print_results(path, packets, distance, delays) 
+    delays = [] 
     reset_packets(packets)
 
     #running genetic algorithms 

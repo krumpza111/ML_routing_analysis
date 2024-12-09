@@ -43,43 +43,10 @@ def a_star_heuristic(node, goal):
     for node in node.neighbors:
         if node == goal:
             return 0
-    traffic_intensity = 1 + node.traffic / BANDWIDTH
     delay_penalty = node.delay
     return delay_penalty * node.traffic 
 
-def a_star_search(start, goal):
-    frontier = [] 
-    # Priority queue, reached dictionary 
-    iter = 0 #iteration since priority queues don't allow duplicate nodes
-    heapq.heappush(frontier, (0, iter, start)) 
-    path_costs = {start: 0} # path cost seen dictionary
-    path = {start: None} # path to a given node dictionary
-    f_scores = {start: a_star_heuristic(start, goal)}
-
-    while frontier:
-        # pop from queue. curr_score: f(n) = g(n) + h(n)
-        _, _, curr_node = heapq.heappop(frontier) 
-        if curr_node == goal:
-            path = reconstruct_path(path, goal) 
-            path.reverse()
-            return path, f_scores[goal]
-        # for each neighbor of current node
-        for neighbor, cost in curr_node.neighbors.items():
-            temp_cost = path_costs[curr_node] + cost 
-            
-            # only update path if the lowest cost is seen 
-            if neighbor not in path_costs or temp_cost < path_costs[neighbor]:
-                path[neighbor] = curr_node 
-                path_costs[neighbor] = temp_cost 
-                f_score = temp_cost + a_star_heuristic(neighbor, goal) 
-                f_scores[neighbor] = f_score
-                iter += 1
-                heapq.heappush(frontier, (f_score, iter, neighbor))
-    return None # no path found
-
-'''
-A STAR SEARCH (Distance favored)
-'''
+# A-star heuristic is to minimize distance first and then attempt to minimize the delay and traffic congestion experienced
 def a_star_d_heuristic(node, goal):
     for n in node.neighbors:
         if n == goal:
@@ -89,14 +56,14 @@ def a_star_d_heuristic(node, goal):
     delay_penalty = node.delay
     return (neighbor_distance * 0.7) + (traffic_intensity * 0.2) + (delay_penalty * 0.1)
 
-def a_star_d_search(start, goal):
+def a_star_search(start, goal, heuristic):
     frontier = [] 
     # Priority queue, reached dictionary 
     iter = 0 #iteration since priority queues don't allow duplicate nodes
     heapq.heappush(frontier, (0, iter, start)) 
     path_costs = {start: 0} # path cost seen dictionary
     path = {start: None} # path to a given node dictionary
-    f_scores = {start: a_star_d_heuristic(start, goal)}
+    f_scores = {start: heuristic(start, goal)}
 
     while frontier:
         # pop from queue. curr_score: f(n) = g(n) + h(n)
@@ -113,7 +80,7 @@ def a_star_d_search(start, goal):
             if neighbor not in path_costs or temp_cost < path_costs[neighbor]:
                 path[neighbor] = curr_node 
                 path_costs[neighbor] = temp_cost 
-                f_score = temp_cost + a_star_d_heuristic(neighbor, goal) 
+                f_score = temp_cost + heuristic(neighbor, goal) 
                 f_scores[neighbor] = f_score
                 iter += 1
                 heapq.heappush(frontier, (f_score, iter, neighbor))
@@ -122,10 +89,58 @@ def a_star_d_search(start, goal):
 # reconstructs path found in a_star search
 def reconstruct_path(paths, curr_node):
     path = [] 
-    while curr_node:
+    while curr_node is not None:
         path.append(curr_node) 
         curr_node = paths[curr_node] 
     return path 
+
+'''
+GREEDY BEST FIRST SEARCH ALGORITHMS
+'''
+# Heuristic which minimizes average distance to neighbors
+def gbfs_distance_heuristic(node, goal):
+    if goal in node.neighbors:
+        return node.neighbors[goal]
+    min_dist = min(node.neighbors.values()) 
+    return min_dist
+
+# Heuristic which factors in distance and delay to minimize overall packet transmission
+def gbfs_combined_heuristic(node, goal):
+    traffic_intensity = 1 + node.traffic / BANDWIDTH 
+    delay_penalty = node.delay 
+    estimated_dist = min(node.neighbors.values()) 
+    return estimated_dist + (delay_penalty * traffic_intensity)
+
+# Greed best first search algorithm
+def gbfs(start, goal, heuristic):
+    fronteir = [] # Priority queue -- format: (heuristic_value, node)
+    start_value = heuristic(start, goal)
+    heapq.heappush(fronteir, (start_value, start)) # Add start node to the frontier
+    reached = {start: None} # Dictionary lookup table 
+    visited = set() # Set of visited nodes 
+    while fronteir:
+        _, curr_node = heapq.heappop(fronteir) 
+        if curr_node in visited:
+            # Skip already visited nodes
+            continue
+        visited.add(curr_node)
+
+        if curr_node == goal:
+            path = reconstruct_path(reached, goal) 
+            path.reverse()
+            total_dist = 0
+            for i in range(len(path) - 1):
+                curr_node = path[i]
+                next_node = path[i + 1] 
+                total_dist += curr_node.neighbors[next_node]
+            return path, total_dist
+        
+        for neighbor, cost in curr_node.neighbors.items():
+            if neighbor not in visited:
+                reached[neighbor] = curr_node 
+                cost_to_goal = heuristic(neighbor, goal)
+                heapq.heappush(fronteir, (cost_to_goal, neighbor))
+    return None
 
 '''
 Genetic Algorithm
@@ -245,50 +260,58 @@ def mutate(nodes, chromosome, mutation_rate):
         chromosome.delay = delay 
         chromosome.fitness = chromosome.calculate_fitness()
 
-def genetic_algorithm(nodes, start, goal, pop=200, generations=20, init_mutation_rate=0.01):
-    population = create_initial_population(nodes, start, goal, pop)
-    mutation_rate = init_mutation_rate 
-    best_fitness = 0 
-    stagnant_generations = 0
-    solution = None
+def genetic_algorithm(nodes, start, goal, pop=200, generations=100, init_mutation_rate=0.01):
+    retry_count = 0 
+    max_retries = 3
+    while retry_count < max_retries:
+        population = create_initial_population(nodes, start, goal, pop)
+        if population:
+            mutation_rate = init_mutation_rate 
+            best_fitness = 0 
+            stagnant_generations = 0
+            solution = None
 
-    for generation in range(generations):
-        # Selection: Choose parents based on fitness
-        parents = [select_parents(population) for _ in range(pop // 2)]
+            for _ in range(generations):
+                # Selection: Choose parents based on fitness
+                parents = [select_parents(population) for _ in range(pop // 2)]
 
-        # Crossover: Generate offspring 
-        offspring = [] 
-        for parent1, parent2 in parents:
-            child1, child2 = crossover(parent1, parent2)
-            offspring.append(child1)
-            offspring.append(child2)
+                # Crossover: Generate offspring 
+                offspring = [] 
+                for parent1, parent2 in parents:
+                    child1, child2 = crossover(parent1, parent2)
+                    offspring.append(child1)
+                    offspring.append(child2)
         
-        # Mutation: Apply random mutation to offspring
-        for child in offspring:
-            mutate(nodes, child, mutation_rate) 
+                # Mutation: Apply random mutation to offspring
+                for child in offspring:
+                    mutate(nodes, child, mutation_rate) 
 
-        population = population + offspring 
-        population = sorted(population, key=lambda x: x.fitness, reverse=True)[:pop]
-        best_solution = population[0] # best solution found
+                population = population + offspring 
+                population = sorted(population, key=lambda x: x.fitness, reverse=True)[:pop]
+                best_solution = population[0] # best solution found
 
-        if best_solution.fitness > best_fitness:
-            best_fitness = best_solution.fitness
-            solution = best_solution 
-            stagnant_generations = 0 
+                if best_solution.fitness > best_fitness:
+                    best_fitness = best_solution.fitness
+                    solution = best_solution 
+                    stagnant_generations = 0 
+                else:
+                    stagnant_generations += 1 
+
+                # Adjust mutation rate if no improvement seen 
+                if stagnant_generations > 15:
+                    mutation_rate *= 1.2 
+                else:
+                    mutation_rate = max(init_mutation_rate, mutation_rate * 0.98) #gradually reduce mutation rate
+
+            # Convert best_solution 
+            path = [] 
+            for node in solution.route:
+                path.append(node)
+            # return the path and distance
+            return path, solution.cost
         else:
-            stagnant_generations += 1 
-
-        # Adjust mutation rate if no improvement seen 
-        if stagnant_generations > 15:
-            mutation_rate *= 1.2 
-        else:
-            mutation_rate = max(init_mutation_rate, mutation_rate * 0.98) #gradually reduce mutation rate
-
-    # Convert best_solution 
-    path = [] 
-    for node in solution.route:
-        path.append(node)
-    # return the path and distance
-    return path, solution.cost
+            retry_count += 1 
+            pop += 50 
+    raise ValueError(f"Failed to initialize valid population")
 
 
