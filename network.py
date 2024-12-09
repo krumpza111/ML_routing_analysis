@@ -137,6 +137,16 @@ def run_simulation(network, packet_cluster):
     delays = [] 
     reset_packets(packets)
 
+    # Running CSPF Algorithm 
+    path, distance = cspf_backtracking(start, goal, nodes) 
+    print("CSPF ALGORITHM")
+    for id in group_ids:
+        delays.append(packet_group_transmission(path, packets, id))
+    
+    print_results(path, packets, distance, delays)
+    delays = [] 
+    reset_packets(packets)
+
     #running genetic algorithms 
     path, distance = genetic_algorithm(nodes, start, goal) 
     print("GENETIC ALGORITHM")

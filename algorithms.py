@@ -143,6 +143,46 @@ def gbfs(start, goal, heuristic):
     return None
 
 '''
+CSPF
+'''
+def calculate_max_cost(nodes):
+    max_cost = float('inf')
+    for node in nodes.keys():
+        for neighbor in nodes[node].neighbors.keys():
+            temp_path_cost = nodes[node].neighbors[neighbor]
+            total_cost = temp_path_cost + nodes[node].delay
+            if total_cost > max_cost:
+                max_cost = total_cost
+    return max_cost 
+
+def cspf_backtracking(start, goal, nodes):
+    best_path = None
+    best_cost = float('inf') 
+    max_cost = calculate_max_cost(nodes)
+
+    def dfs(curr_node, path, total_cost):
+        nonlocal best_path, best_cost
+
+        if curr_node == goal:
+            if total_cost < max_cost:
+                if total_cost < best_cost:
+                    best_path = path[:]
+                    best_cost = total_cost 
+            return 
+        
+        for neighbor, cost in curr_node.neighbors.items():
+            if neighbor in path:
+                continue 
+            new_cost = total_cost + cost 
+
+            if new_cost <= max_cost:
+                path.append(neighbor)
+                dfs(neighbor, path, (total_cost + cost))
+                path.pop() 
+    dfs(start, [start], 0)
+    return best_path, best_cost
+
+'''
 Genetic Algorithm
 General Set Up for the GA:
 1. Represent route as chromosome (list of nodes) and randomly create set of initial routes 
