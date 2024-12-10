@@ -14,11 +14,6 @@ class Node:
         self.delay = 0 
         self.prop_delay = 0
         self.traffic = 0
-
-    def equals(self, other):
-        if not isinstance(other, Node):
-            return False
-        return self.name == other.name
     
     def __lt__(self, other):
         return self.delay < other.delay
@@ -44,6 +39,10 @@ class Node:
     # resets traffic intensity to zero 
     def reset_traffic(self):
         self.traffic = 0
+
+    # empties neigbors dictionary 
+    def reset_neighbors(self):
+        self.neighbors.clear()
 
     # Adds delay to packets as they pass through router
     def process_packet(self, packet, next_node):
@@ -170,6 +169,9 @@ def print_path(path):
     for node in path:
         if node == None:
             string_builder += " None "
-            continue
-        string_builder += str(node) + "->"
+            continue 
+        if node == path[-1]:
+            string_builder += str(node)
+        else:
+            string_builder += str(node) + " -> "
     print(string_builder)

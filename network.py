@@ -2,6 +2,10 @@ from network_obj import *
 from algorithms import *
 import copy
 
+static_network_results = [] 
+
+#class Simulation:
+
 # Set up for creating small-sized networks
 def network1a():
     edges = {('A', 'B'): 9, ('A', 'C'): 13, ('B', 'C'): 10, ('B', 'D'): 8, ('C', 'G'): 5, ('D', 'G'): 3}
@@ -80,6 +84,27 @@ def dynamic_sim_cleanup(path, packets, distance, delays):
     distance = 0
     delays = [] 
 
+def distance_scrambler(edges):
+    max_distance = max(edges.values())
+    min_distance = min(edges.values())
+    for edge in edges:
+        rand_int = random.randrange(min_distance, (max_distance + 1))
+        edges[edge] = rand_int 
+    return edges
+
+def delay_scrambler(nodes):
+    delays = [node.delay for node in nodes.values()]
+    max_delay = max(delays)
+    min_delay = min(delays)
+    for node in nodes:
+        rand_int = random.randrange(min_delay, (max_delay + 1))
+        prop_delay = nodes[node].prop_delay
+        nodes[node].set_delay(rand_int, prop_delay) 
+    return nodes
+
+'''
+STATIC NETWORK SIMULATIONS
+'''
 # Function for running a packet simulation through a network
 def run_simulation(network, packet_cluster):
     # Setting up network
@@ -171,6 +196,9 @@ def run_simulation(network, packet_cluster):
         delays.append(packet_group_transmission(path, packets, id))
     print_results(path, packets, distance, delays)
 
+'''
+DYNAMIC NETWORK SIMULATIONS
+'''
 # Function for running a packet simulation through a dynamic network
 def run_dynamic_simulation(network, packet_cluster):
     nodes, edges = network()
@@ -193,7 +221,7 @@ def run_dynamic_simulation(network, packet_cluster):
         delays.append(dynamic_packet_group_transmission(best_path, packets, id))
         temp_path, temp_distance = uniform_cost_search(start, goal) 
         if temp_path != best_path:
-            print("Better path found!")
+            print("New path found!")
             print("Old Distance " + str(best_distance) + " Old path: ", end="")
             print_path(best_path) 
             print("New distance: " + str(temp_distance) + " New path: ", end="")
@@ -214,7 +242,7 @@ def run_dynamic_simulation(network, packet_cluster):
         delays.append(dynamic_packet_group_transmission(best_path, packets, id))
         temp_path, temp_distance = a_star_search(start, goal, a_star_heuristic)
         if temp_path != best_path:
-            print("Better path found!")
+            print("New path found!")
             print("Old Distance " + str(best_distance) + " Old path: ", end="")
             print_path(best_path) 
             print("New distance: " + str(temp_distance) + " New path: ", end="")
@@ -235,7 +263,7 @@ def run_dynamic_simulation(network, packet_cluster):
         delays.append(dynamic_packet_group_transmission(best_path, packets, id)) 
         temp_path, temp_distance = gbfs(start, goal, gbfs_combined_heuristic) 
         if temp_path != best_path:
-            print("Better path found!")
+            print("New path found!")
             print("Old Distance " + str(best_distance) + " Old path: ", end="")
             print_path(best_path) 
             print("New distance: " + str(temp_distance) + " New path: ", end="")
@@ -307,6 +335,77 @@ def run_dynamic_simulation(network, packet_cluster):
             best_distance = temp_distance 
     print_results(best_path, packets, best_distance, delays) 
 
+'''
+AD-HOC NETWORK SIMULATIONS
+'''
+def scramble_network(nodes, edges):
+    new_nodes = delay_scrambler(nodes)
+    new_edges = distance_scrambler(edges)
+    for node in new_nodes:
+        nodes[node].reset_neighbors() 
+    config_graph(new_nodes, new_edges) 
+    return new_nodes, new_edges
+
+# Function for running a packet simulation through a ad-hoc network
+def run_ad_hoc_simulation(network, packet_cluster):
+    nodes, edges = network() 
+    start, goal = nodes['A'], nodes['G']
+
+    group_ids = [] 
+    packet_cluster_copy = packet_cluster.copy() 
+    packets = packet_cluster.copy() 
+    for p in packet_cluster_copy:
+        packets.extend(p.create_children()) 
+        group_ids.append(p.gid)
+    
+    delays = [] 
+    best_path = [] 
+    best_distance = 0
+
+    nodes, edges = scramble_network(nodes, edges)
+
+    # Running UCS 
+    best_path, best_distance = uniform_cost_search(start, goal) 
+    print("AD-HOC UNIFORM COST SEARCH") 
+    for id in group_ids:
+        nodes, edges = scramble_network(nodes, edges) 
+        delays.append(packet_group_transmission(best_path, packets, id)) 
+        temp_path, temp_distance = uniform_cost_search(start, goal)
+        if temp_path != best_path:
+            print("New path found!")
+            print("Old Distance " + str(best_distance) + " Old path: ", end="")
+            print_path(best_path) 
+            print("New distance: " + str(temp_distance) + " New path: ", end="")
+            print_path(temp_path)
+            best_path = temp_path 
+            best_distance = temp_distance 
+    print_results(best_path, packets, best_distance, delays)
+    best_path = [] 
+    reset_packets(packets)
+    best_distance = 0
+    delays = [] 
+
+    # running A-star search 
+    best_path, best_distance = a_star_search(start, goal, a_star_heuristic) 
+    print("AD-HOC A STAR SEARCH")
+    for id in group_ids:
+        nodes, edges = scramble_network(nodes, edges) 
+        delays.append(packet_group_transmission(best_path, packets, id)) 
+        temp_path, temp_distance = a_star_search(start, goal, a_star_heuristic) 
+        if temp_path != best_path:
+            print("New path found!")
+            print("Old Distance " + str(best_distance) + "| Old path: ", end="")
+            print_path(best_path) 
+            print("New distance: " + str(temp_distance) + "| New path: ", end="")
+            print_path(temp_path)
+            best_path = temp_path 
+            best_distance = temp_distance 
+    print_results(best_path, packets, best_distance, delays)
+    best_path = [] 
+    reset_packets(packets)
+    best_distance = 0
+    delays = [] 
+    
 
 if __name__ == "__main__":
     '''
@@ -321,27 +420,31 @@ if __name__ == "__main__":
     packet3 = Packet(3, 3871, True)
     packets.append(packet1)
     packets.append(packet2)
-    packets.append(packet3)
+    packets.append(packet3) 
+
+    networks = [network1a, network1b, network2a, network3a]
+    text = ['First', 'Second', 'Third', "Fourth"]
+
+    '''
+    # Static Simulations
+    for i in range(len(text)):
+        print("===========================================")
+        print("          Running " + text[i] + " network")
+        print("===========================================")
+        run_simulation(networks[i], packets)
+
+    # Dynamic simulations
+    for i in range(len(text)):
+        print("===========================================")
+        print("    Running " + text[i] + " dynamic network")
+        print("===========================================")
+        run_simulation(networks[i], packets)
+    '''
     '''
     print("===========================================")
-    print("          Running first network")
+    print("      Running first ad-hoc network")
     print("===========================================")
-    run_simulation(network1a, packets)
-    print("===========================================")
-    print("          Running second network")
-    print("===========================================")
-    run_simulation(network1b, packets)
-    print("===========================================")
-    print("          Running third network")
-    print("===========================================")
-    run_simulation(network2a, packets)
-    print("===========================================")
-    print("          Running fourth network")
-    print("===========================================")
-    run_simulation(network3a, packets)
+    run_ad_hoc_simulation(network2a, packets)
     '''
-    print("===========================================")
-    print("      Running first dynamic network")
-    print("===========================================")
-    run_dynamic_simulation(network2a, packets)
+
 
