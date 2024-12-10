@@ -73,6 +73,13 @@ def print_results(path, packets, distance, delays):
     for p in packets:
         print("Packet Details: " + str(p) + " Packet GID: " + str(p.gid) + " Delay (one way): " + str(p.delay) + "ms")
 
+def dynamic_sim_cleanup(path, packets, distance, delays):
+    print_results(path, packets, distance, delays)
+    path = [] 
+    reset_packets(packets)
+    distance = 0
+    delays = [] 
+
 # Function for running a packet simulation through a network
 def run_simulation(network, packet_cluster):
     # Setting up network
@@ -137,6 +144,16 @@ def run_simulation(network, packet_cluster):
     delays = [] 
     reset_packets(packets)
 
+    # Running Monte Carlo Tree Search 
+    path, distance = mcts(start, goal)
+    print("MONTE CARLO TREE SEARCH")
+    for id in group_ids:
+        delays.append(packet_group_transmission(path, packets, id)) 
+
+    print_results(path, packets, distance, delays)
+    delays = [] 
+    reset_packets(packets)
+
     # Running CSPF Algorithm 
     path, distance = cspf_backtracking(start, goal, nodes) 
     print("CSPF ALGORITHM")
@@ -169,12 +186,12 @@ def run_dynamic_simulation(network, packet_cluster):
     best_path = [] 
     best_distance = 0 
 
-    # running uniform cost search
-    best_path, best_distance = a_star_search(start, goal)
-    print("DYNAMIC A STAR SEARCH") 
+    # running UCS 
+    best_path, best_distance = uniform_cost_search(start, goal)
+    print("DYNAMIC UNIFORM COST SEARCH")
     for id in group_ids:
         delays.append(dynamic_packet_group_transmission(best_path, packets, id))
-        temp_path, temp_distance = a_star_search(start, goal)
+        temp_path, temp_distance = uniform_cost_search(start, goal) 
         if temp_path != best_path:
             print("Better path found!")
             print("Old Distance " + str(best_distance) + " Old path: ", end="")
@@ -184,6 +201,112 @@ def run_dynamic_simulation(network, packet_cluster):
             best_path = temp_path 
             best_distance = temp_distance 
     print_results(best_path, packets, best_distance, delays)
+    best_path = [] 
+    reset_packets(packets)
+    reset_traffic(nodes)
+    best_distance = 0
+    delays = [] 
+
+    # running a-star search 
+    best_path, best_distance = a_star_search(start, goal, a_star_heuristic)
+    print("DYNAMIC A STAR SEARCH") 
+    for id in group_ids:
+        delays.append(dynamic_packet_group_transmission(best_path, packets, id))
+        temp_path, temp_distance = a_star_search(start, goal, a_star_heuristic)
+        if temp_path != best_path:
+            print("Better path found!")
+            print("Old Distance " + str(best_distance) + " Old path: ", end="")
+            print_path(best_path) 
+            print("New distance: " + str(temp_distance) + " New path: ", end="")
+            print_path(temp_path)
+            best_path = temp_path 
+            best_distance = temp_distance 
+    print_results(best_path, packets, best_distance, delays)
+    best_path = [] 
+    reset_packets(packets)
+    reset_traffic(nodes)
+    best_distance = 0
+    delays = [] 
+
+    # running greedy best first search
+    best_path, best_distance = gbfs(start, goal, gbfs_combined_heuristic) 
+    print("DYNAMIC GREEDY BEST FIRST SEARCH")
+    for id in group_ids:
+        delays.append(dynamic_packet_group_transmission(best_path, packets, id)) 
+        temp_path, temp_distance = gbfs(start, goal, gbfs_combined_heuristic) 
+        if temp_path != best_path:
+            print("Better path found!")
+            print("Old Distance " + str(best_distance) + " Old path: ", end="")
+            print_path(best_path) 
+            print("New distance: " + str(temp_distance) + " New path: ", end="")
+            print_path(temp_path)
+            best_path = temp_path 
+            best_distance = temp_distance 
+    print_results(best_path, packets, best_distance, delays)
+    best_path = [] 
+    reset_packets(packets)
+    reset_traffic(nodes)
+    best_distance = 0
+    delays = [] 
+
+    # running monte carlo tree search
+    best_path, best_distance = mcts(start, goal)
+    print("DYNAMIC MONTE CARLO TREE SEARCH")
+    for id in group_ids:
+        delays.append(dynamic_packet_group_transmission(best_path, packets, id))
+        temp_path, temp_distance = mcts(start, goal)
+        if temp_path != best_path:
+            print("New path found!")
+            print("Old Distance " + str(best_distance) + " Old path: ", end="")
+            print_path(best_path) 
+            print("New distance: " + str(temp_distance) + " New path: ", end="")
+            print_path(temp_path)
+            best_path = temp_path 
+            best_distance = temp_distance 
+    print_results(best_path, packets, best_distance, delays)
+    best_path = [] 
+    reset_packets(packets)
+    reset_traffic(nodes)
+    best_distance = 0
+    delays = [] 
+
+    # running CSPF
+    best_path, best_distance = cspf_backtracking(start, goal, nodes) 
+    print("DYNAMIC CSPF ALGORITHM")
+    for id in group_ids:
+        delays.append(dynamic_packet_group_transmission(best_path, packets, id)) 
+        temp_path, temp_distance = cspf_backtracking(start, goal, nodes)
+        if temp_path != best_path:
+            print("New path found!")
+            print("Old Distance " + str(best_distance) + " Old path: ", end="")
+            print_path(best_path) 
+            print("New distance: " + str(temp_distance) + " New path: ", end="")
+            print_path(temp_path)
+            best_path = temp_path 
+            best_distance = temp_distance 
+    print_results(best_path, packets, best_distance, delays) 
+    best_path = [] 
+    reset_packets(packets)
+    reset_traffic(nodes)
+    best_distance = 0
+    delays = [] 
+
+    # running Genetic Algorithm
+    best_path, best_distance = genetic_algorithm(nodes, start, goal) 
+    print("DYNAMIC GENETIC ALGORITHM")
+    for id in group_ids:
+        delays.append(dynamic_packet_group_transmission(best_path, packets, id)) 
+        temp_path, temp_distance = genetic_algorithm(nodes, start, goal) 
+        if temp_path != best_path:
+            print("New path found!")
+            print("Old Distance " + str(best_distance) + " Old path: ", end="")
+            print_path(best_path) 
+            print("New distance: " + str(temp_distance) + " New path: ", end="")
+            print_path(temp_path)
+            best_path = temp_path 
+            best_distance = temp_distance 
+    print_results(best_path, packets, best_distance, delays) 
+
 
 if __name__ == "__main__":
     '''
@@ -199,6 +322,7 @@ if __name__ == "__main__":
     packets.append(packet1)
     packets.append(packet2)
     packets.append(packet3)
+    '''
     print("===========================================")
     print("          Running first network")
     print("===========================================")
@@ -215,9 +339,9 @@ if __name__ == "__main__":
     print("          Running fourth network")
     print("===========================================")
     run_simulation(network3a, packets)
-
-    '''print("===========================================")
+    '''
+    print("===========================================")
     print("      Running first dynamic network")
     print("===========================================")
-    run_dynamic_simulation(network2a, packets)'''
+    run_dynamic_simulation(network2a, packets)
 

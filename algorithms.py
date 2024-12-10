@@ -2,6 +2,7 @@ from network_obj import *
 from collections import deque 
 import heapq
 import random
+import math
 
 
 BANDWIDTH = 10
@@ -181,6 +182,83 @@ def cspf_backtracking(start, goal, nodes):
                 path.pop() 
     dfs(start, [start], 0)
     return best_path, best_cost
+
+'''
+MONTE CARLO TREE SEARCH
+'''
+
+def mcts(start, goal):
+    tree = {} # dictionary representing a tree. Format (state -> {visits, wins, children})
+    exploration_factor = 1.4 # exploaration constant for UCT 
+
+    # Caclulates UCT value (upper confidence bound for trees)
+    def uct_value(wins, visits, parent_visits):
+        if visits == 0:
+            return float('inf')
+        return (wins / visits) + exploration_factor * math.sqrt(math.log(parent_visits) / visits)
+    
+    # Select best child using UCT
+    def select(node):
+        children = tree[node]["children"]
+        parent_visits = tree[node]["visits"] 
+        return max(children, key=lambda child: uct_value(tree[child]["wins"], tree[child]["visits"], parent_visits))
+    
+    # Expand tree by adding new child nodes
+    def expand(node):
+        possible_states = list(node.neighbors.keys()) 
+        for state in possible_states:
+            if state not in tree:
+                tree[state] = {"visits": 0, "wins": 0, "children": []}
+                tree[node]["children"].append(state) 
+                return state
+        return None
+    
+    # Simulate a random path from current node to a terminal state 
+    def simulate(node):
+        curr_node = node 
+        visited = set()
+        while curr_node != goal:
+            visited.add(curr_node)
+            if curr_node == goal:
+                return 1
+            neighbors = [neighbor for neighbor in curr_node.neighbors.keys() if neighbor not in visited] 
+            if not neighbors:
+                return 0
+            curr_node = random.choice(neighbors)
+        return 1 # returns one on sucess of reaching goal 
+    
+    # Backpropogate results of simulation up fom path
+    def backpropogate(path, result):
+        for node in path:
+            tree[node]["visits"] += 1 
+            tree[node]["wins"] += result
+
+    tree[start] = {"visits": 0, "wins": 0, "children": []} 
+    path = [start]
+    # Perform simulations
+    for _ in range(30):
+        node = start 
+
+        # Selection
+        while tree[node]["children"] and all(child in tree for child in tree[node]["children"]):
+            node = select(node)
+        
+        # Expansion 
+        if node != goal:
+            new_node = expand(node)
+            if new_node != None:
+                path.append(new_node) 
+            
+        # Simulation 
+        result = simulate(path[-1]) 
+
+        # Backpropogation 
+        backpropogate(path, result)
+
+    total_distance = 0 
+    for i in range(len(path) - 1):
+        total_distance += path[i].neighbors[path[i + 1]] 
+    return path, total_distance
 
 '''
 Genetic Algorithm

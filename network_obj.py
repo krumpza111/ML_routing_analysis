@@ -15,6 +15,11 @@ class Node:
         self.prop_delay = 0
         self.traffic = 0
 
+    def equals(self, other):
+        if not isinstance(other, Node):
+            return False
+        return self.name == other.name
+    
     def __lt__(self, other):
         return self.delay < other.delay
 
@@ -153,7 +158,7 @@ def reset_packets(packets):
     
 # resets all node traffic in the network
 def reset_traffic(nodes):
-    for node in nodes:
+    for node in nodes.values():
         node.reset_traffic()
 
 # function that prints out a list of nodes in order
@@ -166,5 +171,5 @@ def print_path(path):
         if node == None:
             string_builder += " None "
             continue
-        string_builder += str(node) + " "
+        string_builder += str(node) + "->"
     print(string_builder)
