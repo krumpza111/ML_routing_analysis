@@ -1,4 +1,5 @@
 from collections import deque
+import random
 
 MAX_THROUGHPUT = 1024
 BANDWIDTH = 10
@@ -20,7 +21,8 @@ class Node:
 
     # Creates adjacency list showing adjacent nodes and related cost
     def add_neighbor(self, neighbor, cost):
-        self.neighbors[neighbor] = cost
+        if neighbor not in self.neighbors.keys():
+            self.neighbors[neighbor] = cost
 
     # Sets the nodes delay
     def set_delay(self, node_delay, prop_delay):
@@ -88,7 +90,44 @@ def config_graph(nodes, edge_list):
     for (source, dest), cost in edge_list.items():
         if source in nodes and dest in nodes:
             nodes[source].add_neighbor(nodes[dest], cost)
-            nodes[dest].add_neighbor(nodes[source], cost)
+            nodes[dest].add_neighbor(nodes[source], cost) 
+
+# Reconfigures graph after node removal 
+def reconfigure_graph(nodes, edges):
+    if not nodes:
+        return nodes, edges 
+    removed_node = random.choice(list(nodes.keys())) # randomly select node to remove 
+    if removed_node == 'A' or removed_node == 'G': # do nothing
+        print("Can't remove start or goal node")
+        return nodes, edges
+    print("removed node: " + str(removed_node))
+    affected_nodes = nodes[removed_node].neighbors # the removed nodes neighbors 
+    nodes_copy = nodes.copy() 
+
+    del nodes_copy[removed_node]
+    edges_copy = {edge: cost for edge, cost in edges.items() if removed_node not in edge} # new edge list excluding edges to the removed node 
+
+    # Reattach affected neighbors 
+    for neighbor in affected_nodes.keys():
+        if neighbor not in nodes_copy.values():
+            print("skipping")
+            continue
+        # Find nearest neighbor 
+        remaining_nodes = [node for node in nodes_copy.keys() if node != neighbor.name] # remaining nodes that aren't the curret removed nodes's neighbor
+        if not remaining_nodes:
+            continue 
+        nearest_node = min(remaining_nodes, key=lambda node: edges_copy.get((neighbor, node), float('inf'))) # get nearest node and replace distance with inf 
+
+        # Reconnect to nearest node 
+        cost = random.randrange(1, 10) # sets new cost 
+        # Need to alter cost of the edge if it already exists in edge list (instead of adding)
+        if (neighbor.name, nearest_node) in edges_copy:
+            edges_copy[(neighbor.name, nearest_node)] = cost 
+        elif (nearest_node, neighbor.name) in edges_copy:
+            edges_copy[(nearest_node, neighbor.name)] = cost
+        else: # has to be a new node
+            edges_copy[(neighbor.name, nearest_node)] = cost 
+    return nodes_copy, edges_copy
 
 # Class representing a packet
 class Packet:
@@ -173,5 +212,5 @@ def print_path(path):
         if node == path[-1]:
             string_builder += str(node)
         else:
-            string_builder += str(node) + " -> "
+            string_builder += str(node) + "->"
     print(string_builder)

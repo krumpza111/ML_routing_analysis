@@ -380,7 +380,7 @@ def mutate(nodes, chromosome, mutation_rate):
 
 def genetic_algorithm(nodes, start, goal, pop=200, generations=100, init_mutation_rate=0.01):
     retry_count = 0 
-    max_retries = 3
+    max_retries = 4
     while retry_count < max_retries:
         population = create_initial_population(nodes, start, goal, pop)
         if population:
