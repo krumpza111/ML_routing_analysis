@@ -22,7 +22,7 @@ def network1b():
     edges = {('A', 'B'): 1, ('A', 'G'): 12, ('B', 'C'): 1, ('C', 'G'): 2, ('B', 'D'): 2, ('D', 'E'): 3, ('C', 'E'): 1, ('E', 'G'): 3}
     nodes = {name: Node(name) for name in ['A', 'B', 'C', 'D', 'E', 'G']}
     config_graph(nodes, edges)
-    nodes['A'].set_delay(2, 2)
+    nodes['A'].set_delay(4, 3)
     nodes['B'].set_delay(3, 2) 
     nodes['C'].set_delay(2, 1)
     nodes['D'].set_delay(3, 2)
@@ -35,7 +35,7 @@ def network2a():
     edges = {('A', 'B'): 1, ('A', 'C'): 3, ('B', 'D'): 2, ('C', 'F'): 2, ('D', 'F'): 1, ('C', 'E'): 6, ('F', 'G'): 5, ('E', 'G'): 2}
     nodes = {name: Node(name) for name in ['A', 'B', 'C', 'D', 'E', 'F', 'G']}
     config_graph(nodes, edges)
-    nodes['A'].set_delay(2, 2)
+    nodes['A'].set_delay(3, 2)
     nodes['B'].set_delay(1, 2)
     nodes['C'].set_delay(3, 4)
     nodes['D'].set_delay(3, 1)
@@ -59,7 +59,7 @@ def network3a():
     nodes['H'].set_delay(4, 3)
     nodes['I'].set_delay(2, 2)
     nodes['J'].set_delay(2, 1)
-    nodes['K'].set_delay(2, 2)
+    nodes['K'].set_delay(1, 1)
     nodes['L'].set_delay(1, 1)
     return nodes, edges
 
@@ -587,7 +587,7 @@ if __name__ == "__main__":
     static network: only run once to get a path since traffic doesn't change 
     other networks: run search once per each packet to get a new path as traffic and nodes change
     '''
-    packets = []
+    packets = [] 
     packet1 = Packet(1, 5100, True) 
     packet2 = Packet(2, 2048, True)
     packet3 = Packet(3, 3871, True)
@@ -598,7 +598,7 @@ if __name__ == "__main__":
     networks = [network1a, network1b, network2a, network3a]
     text = ['First', 'Second', 'Third', "Fourth"]
 
-    '''
+ 
     # Static Simulations
     for i in range(len(text)):
         print("===========================================")
@@ -612,14 +612,14 @@ if __name__ == "__main__":
         print("    Running " + text[i] + " dynamic network")
         print("===========================================")
         run_simulation(networks[i], packets)
-    '''
 
+    '''
     # Ad-Hoc Simulations
     for i in range(len(text)):
         print("===========================================")
         print("    Running " + text[i] + " ad-hoc network")
         print("===========================================")
         run_ad_hoc_simulation(networks[i], packets)
-
+    '''
 
 

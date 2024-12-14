@@ -60,7 +60,7 @@ class Node:
             else:
                 path_cost = self.neighbors[next_node] 
                 #print("path cost is " + str(path_cost) + " and the next node is " + str(next_node) + " with propogation delay " + str(next_node.prop_delay))
-                packet.delay += (next_node.prop_delay + path_cost)
+                packet.delay += (next_node.prop_delay * path_cost)
         packet.delay += (self.delay * throughput)
         return 
     

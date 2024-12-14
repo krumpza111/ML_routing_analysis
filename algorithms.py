@@ -55,7 +55,7 @@ def a_star_d_heuristic(node, goal):
     neighbor_distance = min(distance for _, distance in node.neighbors.items()) 
     traffic_intensity = 1 + node.traffic / BANDWIDTH
     delay_penalty = node.delay
-    return (neighbor_distance * 0.7) + (traffic_intensity * 0.2) + (delay_penalty * 0.1)
+    return round((neighbor_distance * 0.7) + (traffic_intensity * 0.2) + (delay_penalty * 0.1))
 
 def a_star_search(start, goal, heuristic):
     frontier = [] 
@@ -190,6 +190,7 @@ MONTE CARLO TREE SEARCH
 def mcts(start, goal):
     tree = {} # dictionary representing a tree. Format (state -> {visits, wins, children})
     exploration_factor = 1.4 # exploaration constant for UCT 
+    hop_penalty = 0.2
 
     # Caclulates UCT value (upper confidence bound for trees)
     def uct_value(wins, visits, parent_visits):
@@ -206,59 +207,80 @@ def mcts(start, goal):
     # Expand tree by adding new child nodes
     def expand(node):
         possible_states = list(node.neighbors.keys()) 
+        new_children = []
         for state in possible_states:
             if state not in tree:
                 tree[state] = {"visits": 0, "wins": 0, "children": []}
                 tree[node]["children"].append(state) 
-                return state
-        return None
+                new_children.append(state)
+        return new_children[0] if new_children else None
     
     # Simulate a random path from current node to a terminal state 
     def simulate(node):
         curr_node = node 
+        total_cost = 0
+        hop_count = 0
         visited = set()
         while curr_node != goal:
             visited.add(curr_node)
-            if curr_node == goal:
-                return 1
             neighbors = [neighbor for neighbor in curr_node.neighbors.keys() if neighbor not in visited] 
             if not neighbors:
-                return 0
-            curr_node = random.choice(neighbors)
-        return 1 # returns one on sucess of reaching goal 
+                return float('inf') # Penalize dead end paths 
+            next_node  = min(neighbors, key=lambda n: curr_node.neighbors[n]) # choose shortest closest neighbor
+            total_cost += curr_node.neighbors[next_node] + curr_node.delay
+            hop_count += 1
+            curr_node = next_node
+        # add delay of the node 
+        total_cost += curr_node.delay
+        total_cost += hop_count * hop_penalty
+        return total_cost # returns total cost (distance) of path
     
     # Backpropogate results of simulation up fom path
-    def backpropogate(path, result):
+    def backpropogate(path, result, reached_goal=False):
         for node in path:
             tree[node]["visits"] += 1 
-            tree[node]["wins"] += result
+            if reached_goal:
+                tree[node]["wins"] += 10
+            else:
+                tree[node]["wins"] += 1
+
+    # Function for reconstructing a path in MCTS
+    def reconstruct_path():
+        node = start 
+        best_path = [start]
+        while node != goal and tree[node]["children"]:
+            node = max(tree[node]["children"], key=lambda child: uct_value(tree[child]["wins"], tree[child]["visits"], tree[node]["visits"]))
+            best_path.append(node) 
+        return best_path
 
     tree[start] = {"visits": 0, "wins": 0, "children": []} 
-    path = [start]
     # Perform simulations
-    for _ in range(30):
+    for _ in range(50):
         node = start 
+        sim_path = [start]
 
         # Selection
-        while tree[node]["children"] and all(child in tree for child in tree[node]["children"]):
+        while node != goal and tree[node]["children"]:
             node = select(node)
+            sim_path.append(node)
         
         # Expansion 
         if node != goal:
             new_node = expand(node)
-            if new_node != None:
-                path.append(new_node) 
+            if new_node:
+                sim_path.append(new_node) 
             
         # Simulation 
-        result = simulate(path[-1]) 
+        result = simulate(sim_path[-1]) 
 
         # Backpropogation 
-        backpropogate(path, result)
+        reached_goal = sim_path[-1] == goal
+        backpropogate(sim_path, result, reached_goal)
 
-    total_distance = 0 
-    for i in range(len(path) - 1):
-        total_distance += path[i].neighbors[path[i + 1]] 
-    return path, total_distance
+    # Reconstruct path to find optimal path 
+    best_path = reconstruct_path()
+    total_distance = sum(best_path[i].neighbors[best_path[i + 1]] for i in range(len(best_path) - 1))
+    return best_path, total_distance
 
 '''
 Genetic Algorithm
