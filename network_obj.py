@@ -2,7 +2,6 @@ from collections import deque
 import random
 
 MAX_THROUGHPUT = 1024
-BANDWIDTH = 10
 
 # Class to create a node
 # Each node is meant to represent a router so its attributes are:
@@ -92,15 +91,18 @@ def config_graph(nodes, edge_list):
             nodes[source].add_neighbor(nodes[dest], cost)
             nodes[dest].add_neighbor(nodes[source], cost) 
 
-# Reconfigures graph after node removal 
+# Removes a node randomly and reconfigures the graph after
 def reconfigure_graph(nodes, edges):
     if not nodes:
         return nodes, edges 
+    max_distance = max(edges.values())
+    min_distance = min(edges.values())
     removed_node = random.choice(list(nodes.keys())) # randomly select node to remove 
-    if removed_node == 'A' or removed_node == 'G': # do nothing
-        print("Can't remove start or goal node")
+    if removed_node == 'A' or removed_node == 'G': 
+        # do nothing
+        #print("Can't remove start or goal node")
         return nodes, edges
-    print("removed node: " + str(removed_node))
+    #print("removed node: " + str(removed_node))
     affected_nodes = nodes[removed_node].neighbors # the removed nodes neighbors 
     nodes_copy = nodes.copy() 
 
@@ -119,7 +121,7 @@ def reconfigure_graph(nodes, edges):
         nearest_node = min(remaining_nodes, key=lambda node: edges_copy.get((neighbor, node), float('inf'))) # get nearest node and replace distance with inf 
 
         # Reconnect to nearest node 
-        cost = random.randrange(1, 10) # sets new cost 
+        cost = random.randrange(min_distance, (max_distance) + 2) # sets new cost 
         # Need to alter cost of the edge if it already exists in edge list (instead of adding)
         if (neighbor.name, nearest_node) in edges_copy:
             edges_copy[(neighbor.name, nearest_node)] = cost 
@@ -199,7 +201,7 @@ def reset_traffic(nodes):
     for node in nodes.values():
         node.reset_traffic()
 
-# function that prints out a list of nodes in order
+# function that returns a string of a path in the format 'A->B->C' 
 def print_path(path):
     if path is None:
         print("Error: path is empty")
@@ -213,4 +215,4 @@ def print_path(path):
             string_builder += str(node)
         else:
             string_builder += str(node) + "->"
-    print(string_builder)
+    return string_builder

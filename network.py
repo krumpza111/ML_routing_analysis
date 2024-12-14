@@ -1,10 +1,13 @@
 from network_obj import *
 from algorithms import *
 import copy
+import time
+from tabulate import tabulate
 
-static_network_results = [] 
-
-#class Simulation:
+# Global tables to store results
+static_network_results = {} 
+dynamic_network_results = {} 
+ad_hoc_network_results = {} 
 
 # Set up for creating small-sized networks
 def network1a():
@@ -77,13 +80,7 @@ def print_results(path, packets, distance, delays):
     for p in packets:
         print("Packet Details: " + str(p) + " Packet GID: " + str(p.gid) + " Delay (one way): " + str(p.delay) + "ms")
 
-def dynamic_sim_cleanup(path, packets, distance, delays):
-    print_results(path, packets, distance, delays)
-    path = [] 
-    reset_packets(packets)
-    distance = 0
-    delays = [] 
-
+ # A function for assigning random distances to edges between the ranges of the highest and lowest distances       
 def distance_scrambler(edges):
     max_distance = max(edges.values())
     min_distance = min(edges.values())
@@ -92,6 +89,7 @@ def distance_scrambler(edges):
         edges[edge] = rand_int 
     return edges
 
+# A function for 
 def delay_scrambler(nodes):
     delays = [node.delay for node in nodes.values()]
     max_delay = max(delays)
@@ -106,10 +104,24 @@ def delay_scrambler(nodes):
 STATIC NETWORK SIMULATIONS
 '''
 # Function for running a packet simulation through a network
+def run_algorithm(algorithm_name, start, goal, algorithm_function, group_ids, packets, *args):
+    delays = [] 
+    start_time = time.time() # start time
+    path, distance = algorithm_function(start, goal, *args) # run algorithm
+    for id in group_ids:
+        delays.append(packet_group_transmission(path, packets, id)) 
+
+    end_time = time.time() 
+    total_time = end_time - start_time 
+    static_network_results[algorithm_name] = {'path': path, 'distance': distance, 'total_delay': sum(delays), 'total_time': total_time}
+    reset_packets(packets)
+
+# Function for running all algorithms within a certain network
 def run_simulation(network, packet_cluster):
     # Setting up network
     nodes, edges = network() 
-    start, goal = nodes['A'], nodes['G'] 
+    start, goal = nodes['A'], nodes['G']
+
     # Setting up packets
     group_ids = []
     packet_cluster_copy = copy.deepcopy(packet_cluster)
@@ -117,92 +129,60 @@ def run_simulation(network, packet_cluster):
     for p in packet_cluster_copy:
         packets.extend(p.create_children()) 
         group_ids.append(p.gid)
-    
-    delays = []
 
-    # running uniform cost search 
-    path, distance = uniform_cost_search(start, goal) 
-    print("UNIFORM COST SEARCH") 
-    for id in group_ids:
-        delays.append(packet_group_transmission(path, packets, id))
-    print_results(path, packets, distance, delays)
-    delays = []
-    reset_packets(packets) 
-
-    #running a star search 
-    path, distance = a_star_search(start, goal, a_star_heuristic) 
-    print("A STAR SEARCH")
-    for id in group_ids:
-        delays.append(packet_group_transmission(path, packets, id))
-
-    print_results(path, packets, distance, delays)
-    delays = []
-    reset_packets(packets)
-
-    # A-Star search varient
-    path, distance = a_star_search(start, goal, a_star_d_heuristic) 
-    print("A STAR SEARCH WITH DISTANCE HEURISTIC") 
-    for id in group_ids:
-        delays.append(packet_group_transmission(path, packets, id))
-    
-    print_results(path, packets, distance, delays) 
-    delays = [] 
-    reset_packets(packets)
-
-    #running greedy best first search 
-    path, distance = gbfs(start, goal, gbfs_distance_heuristic)
-    print("GREEDY BEST FIRST SEARCH") 
-    for id in group_ids:
-        delays.append(packet_group_transmission(path, packets, id)) 
-
-    print_results(path, packets, distance, delays)
-    delays = [] 
-    reset_packets(packets)
-
-    # GBFS search varient
-    path, distance = gbfs(start, goal, gbfs_combined_heuristic)
-    print("GREEDY BEST FIRST SEARCH WITH COMBINED HEURISTIC") 
-    for id in group_ids:
-        delays.append(packet_group_transmission(path, packets, id)) 
-
-    print_results(path, packets, distance, delays) 
-    delays = [] 
-    reset_packets(packets)
-
-    # Running Monte Carlo Tree Search 
-    path, distance = mcts(start, goal)
-    print("MONTE CARLO TREE SEARCH")
-    for id in group_ids:
-        delays.append(packet_group_transmission(path, packets, id)) 
-
-    print_results(path, packets, distance, delays)
-    delays = [] 
-    reset_packets(packets)
-
-    # Running CSPF Algorithm 
-    path, distance = cspf_backtracking(start, goal, nodes) 
-    print("CSPF ALGORITHM")
-    for id in group_ids:
-        delays.append(packet_group_transmission(path, packets, id))
-    
-    print_results(path, packets, distance, delays)
-    delays = [] 
-    reset_packets(packets)
-
-    #running genetic algorithms 
-    path, distance = genetic_algorithm(nodes, start, goal) 
-    print("GENETIC ALGORITHM")
-    for id in group_ids:
-        delays.append(packet_group_transmission(path, packets, id))
-    print_results(path, packets, distance, delays)
+    # Runnning all algorithms
+    run_algorithm("UNIFORM COST SEARCH", start, goal, uniform_cost_search, group_ids, packets)
+    run_algorithm("A STAR SEARCH", start, goal, a_star_search, group_ids, packets, a_star_heuristic)
+    run_algorithm("A STAR (DISTANCE) SEARCH", start, goal, a_star_search, group_ids, packets, a_star_d_heuristic)
+    run_algorithm("GREEDY BEST FIRST SEARCH", start, goal, gbfs, group_ids, packets, gbfs_distance_heuristic) 
+    run_algorithm("GREEDY BEST FIRST (COMBINED) SEARCH", start, goal, gbfs, group_ids, packets, gbfs_combined_heuristic) 
+    run_algorithm("MONTE CARLO TREE SEARCH", start, goal, mcts, group_ids, packets)
+    run_algorithm("CSPF", start, goal, cspf_backtracking, group_ids, packets, nodes)
+    run_algorithm("GENETIC ALGORITHM", start, goal, genetic_algorithm, group_ids, packets, nodes)
 
 '''
 DYNAMIC NETWORK SIMULATIONS
 '''
+# prints updated path change
+def print_path_change(temp_path, best_path, temp_distance, best_distance):
+    print("New path found!")
+    print("Old Distance " + str(best_distance) + " Old path: ", end="")
+    print_path(best_path) 
+    print("New distance: " + str(temp_distance) + " New path: ", end="")
+    print_path(temp_path)
+    
+# Function for testing a specfic algorithms routing 
+def run_dynamic_algorithm(algorithm_name, start, goal, algorithm_function, nodes, group_ids, packets, *args):
+    delays = [] 
+    best_path = [] 
+    old_paths = {} 
+    best_distance = 0 
+    start_time = time.time()
+    best_path, best_distance = algorithm_function(start, goal, *args) 
+    for id in group_ids:
+        delays.append(dynamic_packet_group_transmission(best_path, packets, id)) 
+        temp_path, temp_distance = algorithm_function(start, goal, *args) 
+        if temp_path != best_path:
+            #print_path_change(temp_path, best_path, temp_distance, best_distance)
+            old_paths[print_path(temp_path)] = temp_distance
+            best_path = temp_path 
+            best_distance = temp_distance 
+    end_time = time.time() 
+    total_time = end_time - start_time 
+    if len(old_paths) > 0:
+        dynamic_network_results[algorithm_name] = {'path': best_path, 'distance': best_distance, 'total_delay': sum(delays), 'total_time': total_time, 'old_paths': old_paths}
+    else:
+        dynamic_network_results[algorithm_name] = {'path': best_path, 'distance': best_distance, 'total_delay': sum(delays), 'total_time': total_time, 'old_paths': "No change"}
+    reset_packets(packets)
+    reset_traffic(nodes)
+    
 # Function for running a packet simulation through a dynamic network
 def run_dynamic_simulation(network, packet_cluster):
+    # Setting up network
     nodes, edges = network()
     start, goal = nodes['A'], nodes['G']
+
+    # Setting up packets
     group_ids = [] 
     packet_cluster_copy = packet_cluster.copy() 
     packets = packet_cluster.copy() 
@@ -210,137 +190,22 @@ def run_dynamic_simulation(network, packet_cluster):
         packets.extend(p.create_children()) 
         group_ids.append(p.gid)
     
-    delays = [] 
-    best_path = [] 
-    best_distance = 0 
+    # Running all algorithms
+    run_dynamic_algorithm("UNIFORM COST SEARCH", start, goal, uniform_cost_search, nodes, group_ids, packets)
+    run_dynamic_algorithm("A STAR SEARCH", start, goal, a_star_search, nodes, group_ids, packets, a_star_heuristic)
+    run_dynamic_algorithm("A STAR (DISTANCE) SEARCH", start, goal, a_star_search, nodes, group_ids, packets, a_star_d_heuristic)
+    run_dynamic_algorithm("GREEDY BEST FIRST SEARCH", start, goal, gbfs, nodes, group_ids, packets, gbfs_distance_heuristic)
+    run_dynamic_algorithm("GREEDY BEST FIRST (COMBINED) SEARCH", start, goal, gbfs, nodes, group_ids, packets, gbfs_combined_heuristic)
+    run_dynamic_algorithm("MONTE CARLO TREE SEARCH", start, goal, mcts, nodes, group_ids, packets)
+    run_dynamic_algorithm("CSPF", start, goal, cspf_backtracking, nodes, group_ids, packets, nodes) 
+    run_dynamic_algorithm("GENETIC ALGORITHM", start, goal, genetic_algorithm, nodes, group_ids, packets, nodes) 
 
-    # running UCS 
-    best_path, best_distance = uniform_cost_search(start, goal)
-    print("DYNAMIC UNIFORM COST SEARCH")
-    for id in group_ids:
-        delays.append(dynamic_packet_group_transmission(best_path, packets, id))
-        temp_path, temp_distance = uniform_cost_search(start, goal) 
-        if temp_path != best_path:
-            print("New path found!")
-            print("Old Distance " + str(best_distance) + " Old path: ", end="")
-            print_path(best_path) 
-            print("New distance: " + str(temp_distance) + " New path: ", end="")
-            print_path(temp_path)
-            best_path = temp_path 
-            best_distance = temp_distance 
-    print_results(best_path, packets, best_distance, delays)
-    best_path = [] 
-    reset_packets(packets)
-    reset_traffic(nodes)
-    best_distance = 0
-    delays = [] 
-
-    # running a-star search 
-    best_path, best_distance = a_star_search(start, goal, a_star_heuristic)
-    print("DYNAMIC A STAR SEARCH") 
-    for id in group_ids:
-        delays.append(dynamic_packet_group_transmission(best_path, packets, id))
-        temp_path, temp_distance = a_star_search(start, goal, a_star_heuristic)
-        if temp_path != best_path:
-            print("New path found!")
-            print("Old Distance " + str(best_distance) + " Old path: ", end="")
-            print_path(best_path) 
-            print("New distance: " + str(temp_distance) + " New path: ", end="")
-            print_path(temp_path)
-            best_path = temp_path 
-            best_distance = temp_distance 
-    print_results(best_path, packets, best_distance, delays)
-    best_path = [] 
-    reset_packets(packets)
-    reset_traffic(nodes)
-    best_distance = 0
-    delays = [] 
-
-    # running greedy best first search
-    best_path, best_distance = gbfs(start, goal, gbfs_combined_heuristic) 
-    print("DYNAMIC GREEDY BEST FIRST SEARCH")
-    for id in group_ids:
-        delays.append(dynamic_packet_group_transmission(best_path, packets, id)) 
-        temp_path, temp_distance = gbfs(start, goal, gbfs_combined_heuristic) 
-        if temp_path != best_path:
-            print("New path found!")
-            print("Old Distance " + str(best_distance) + " Old path: ", end="")
-            print_path(best_path) 
-            print("New distance: " + str(temp_distance) + " New path: ", end="")
-            print_path(temp_path)
-            best_path = temp_path 
-            best_distance = temp_distance 
-    print_results(best_path, packets, best_distance, delays)
-    best_path = [] 
-    reset_packets(packets)
-    reset_traffic(nodes)
-    best_distance = 0
-    delays = [] 
-
-    # running monte carlo tree search
-    best_path, best_distance = mcts(start, goal)
-    print("DYNAMIC MONTE CARLO TREE SEARCH")
-    for id in group_ids:
-        delays.append(dynamic_packet_group_transmission(best_path, packets, id))
-        temp_path, temp_distance = mcts(start, goal)
-        if temp_path != best_path:
-            print("New path found!")
-            print("Old Distance " + str(best_distance) + " Old path: ", end="")
-            print_path(best_path) 
-            print("New distance: " + str(temp_distance) + " New path: ", end="")
-            print_path(temp_path)
-            best_path = temp_path 
-            best_distance = temp_distance 
-    print_results(best_path, packets, best_distance, delays)
-    best_path = [] 
-    reset_packets(packets)
-    reset_traffic(nodes)
-    best_distance = 0
-    delays = [] 
-
-    # running CSPF
-    best_path, best_distance = cspf_backtracking(start, goal, nodes) 
-    print("DYNAMIC CSPF ALGORITHM")
-    for id in group_ids:
-        delays.append(dynamic_packet_group_transmission(best_path, packets, id)) 
-        temp_path, temp_distance = cspf_backtracking(start, goal, nodes)
-        if temp_path != best_path:
-            print("New path found!")
-            print("Old Distance " + str(best_distance) + " Old path: ", end="")
-            print_path(best_path) 
-            print("New distance: " + str(temp_distance) + " New path: ", end="")
-            print_path(temp_path)
-            best_path = temp_path 
-            best_distance = temp_distance 
-    print_results(best_path, packets, best_distance, delays) 
-    best_path = [] 
-    reset_packets(packets)
-    reset_traffic(nodes)
-    best_distance = 0
-    delays = [] 
-
-    # running Genetic Algorithm
-    best_path, best_distance = genetic_algorithm(nodes, start, goal) 
-    print("DYNAMIC GENETIC ALGORITHM")
-    for id in group_ids:
-        delays.append(dynamic_packet_group_transmission(best_path, packets, id)) 
-        temp_path, temp_distance = genetic_algorithm(nodes, start, goal) 
-        if temp_path != best_path:
-            print("New path found!")
-            print("Old Distance " + str(best_distance) + " Old path: ", end="")
-            print_path(best_path) 
-            print("New distance: " + str(temp_distance) + " New path: ", end="")
-            print_path(temp_path)
-            best_path = temp_path 
-            best_distance = temp_distance 
-    print_results(best_path, packets, best_distance, delays) 
 
 '''
 AD-HOC NETWORK SIMULATIONS
 '''
 def scramble_network(nodes, edges):
     if random.random() <= 0.33: # Flexibility (triggers 1/3rd of the time)
-        print("Removing node") 
         new_nodes, new_edges = reconfigure_graph(nodes, edges)
         for node in new_nodes:
             nodes[node].reset_neighbors() 
@@ -354,231 +219,91 @@ def scramble_network(nodes, edges):
     return new_nodes, new_edges
 
 # Function for running a packet simulation through a ad-hoc network
-def run_ad_hoc_simulation(network, packet_cluster):
-    nodes, edges = network() 
-    print(nodes)
-    #start, goal = nodes['A'], nodes['G']
-
-    group_ids = [] 
-    packet_cluster_copy = packet_cluster.copy() 
-    packets = packet_cluster.copy() 
-    for p in packet_cluster_copy:
-        packets.extend(p.create_children()) 
-        group_ids.append(p.gid)
-    
+def run_ad_hoc_algorithm(algorithm_name, start, goal, algorithm_function, nodes, edges, group_ids, packets, *args):
     delays = [] 
     path = [] 
-    distance = 0
-    temp_nodes = nodes.copy()
-    temp_edges = edges.copy()
-    # Running UCS 
-    print("AD-HOC UNIFORM COST SEARCH") 
+    distance = 0 
+    old_paths = {}
+    nodes_removed = []
+    temp_nodes = nodes.copy() 
+    temp_edges = edges.copy() 
+    start_time = time.time()
     for id in group_ids:
-        num_nodes = len(temp_nodes)
+        num_nodes = len(temp_nodes) 
         temp_nodes, temp_edges = scramble_network(temp_nodes, temp_edges)
-        print("After scrambling") 
-        print(temp_edges)
         temp_num_nodes = len(temp_nodes.keys()) 
         start, goal = temp_nodes['A'], temp_nodes['G']
         if num_nodes == temp_num_nodes: # no nodes removed 
-            temp_path, temp_distance = uniform_cost_search(start, goal) 
+            temp_path, temp_distance = algorithm_function(start, goal, *args) 
             delays.append(packet_group_transmission(temp_path, packets, id)) 
             if path is None:
                 path = temp_path
                 distance = temp_distance 
             else: # There is a path from before
                 if temp_path != path:
-                    print("New path found!")
-                    print("Old Distance " + str(distance) + " Old path: ", end="")
-                    print_path(path) 
-                    print("New distance: " + str(temp_distance) + " New path: ", end="")
-                    print_path(temp_path)
+                    #print("New path found!")
+                    #print("Old Distance " + str(distance) + " Old path: ", end="")
+                    #print_path(path) 
+                    #print("New distance: " + str(temp_distance) + " New path: ", end="")
+                    #print_path(temp_path)
+                    old_paths[print_path(temp_path)] = temp_distance
                     path =  temp_path
                     distance = temp_distance 
         else: # a node was removed 
-            print("Node removed")
-            temp_path, temp_distance = uniform_cost_search(start, goal) 
+            for node in nodes:
+                if node not in temp_nodes and node not in nodes_removed:
+                    nodes_removed.append(node)
+            temp_path, temp_distance = algorithm_function(start, goal, *args) 
             delays.append(packet_group_transmission(temp_path, packets, id)) 
-    print_results(path, packets, distance, delays)
-    path = [] 
+    end_time = time.time() 
+    total_time = end_time - start_time 
+    if len(old_paths) > 0:
+        ad_hoc_network_results[algorithm_name] = {'path': path, 'distance': distance, 'total_delay': sum(delays), 'total_time': total_time, 'old_paths': old_paths, 'removed_nodes': nodes_removed} 
+    else:
+        ad_hoc_network_results[algorithm_name] = {'path': path, 'distance': distance, 'total_delay': sum(delays), 'total_time': total_time, 'old_paths': "No change", 'removed_nodes': nodes_removed}
     reset_packets(packets)
-    distance = 0
-    delays = [] 
-
-    # running A-star search 
-    temp_nodes = nodes.copy() 
-    temp_edges = edges.copy() 
-    print("AD-HOC A STAR SEARCH")
-    for id in group_ids:
-        num_nodes = len(temp_nodes)
-        temp_nodes, temp_edges = scramble_network(temp_nodes, temp_edges) 
-        print("After scrambling") 
-        print(temp_edges)
-        temp_num_nodes = len(temp_nodes.keys()) 
-        start, goal = temp_nodes['A'], temp_nodes['G']
-        if num_nodes == temp_num_nodes:
-            temp_path, temp_distance = a_star_search(start, goal, a_star_heuristic)
-            delays.append(packet_group_transmission(temp_path, packets, id)) 
-            if path is None:
-                path = temp_path 
-                distance = temp_distance 
-            else:
-                if temp_path != path:
-                    print("New path found!")
-                    print("Old Distance " + str(distance) + " | Old path: ", end="")
-                    print_path(path) 
-                    print("New distance: " + str(temp_distance) + " | New path: ", end="")
-                    print_path(temp_path)
-                    path = temp_path 
-                    distance = temp_distance
-        else:
-            print("Node removed") 
-            temp_path, temp_distance = a_star_search(start, goal, a_star_heuristic) 
-            delays.append(packet_group_transmission(temp_path, packets, id))
-    print_results(path, packets, distance, delays)
-    path = [] 
-    reset_packets(packets)
-    distance = 0
-    delays = [] 
-
-    # running Greedy best first search
-    temp_nodes = nodes.copy() 
-    temp_edges = edges.copy() 
-    print("AD-HOC GBFS")
-    for id in group_ids:
-        num_nodes = len(temp_nodes)
-        temp_nodes, temp_edges = scramble_network(temp_nodes, temp_edges) 
-        print("After scrambling") 
-        print(temp_edges)
-        temp_num_nodes = len(temp_nodes.keys()) 
-        start, goal = temp_nodes['A'], temp_nodes['G']
-        if num_nodes == temp_num_nodes:
-            temp_path, temp_distance = gbfs(start, goal, gbfs_combined_heuristic)
-            delays.append(packet_group_transmission(temp_path, packets, id)) 
-            if path is None:
-                path = temp_path 
-                distance = temp_distance 
-            else:
-                if temp_path != path:
-                    print("New path found!")
-                    print("Old Distance " + str(distance) + " | Old path: ", end="")
-                    print_path(path) 
-                    print("New distance: " + str(temp_distance) + " | New path: ", end="")
-                    print_path(temp_path)
-                    path = temp_path 
-                    distance = temp_distance
-        else:
-            print("Node removed") 
-            temp_path, temp_distance = gbfs(start, goal, gbfs_combined_heuristic)
-            delays.append(packet_group_transmission(temp_path, packets, id))
-    print_results(path, packets, distance, delays)
-    path = [] 
-    reset_packets(packets)
-    distance = 0
-    delays = [] 
-
-    # running Monte Carlo Tree Search
-    temp_nodes = nodes.copy() 
-    temp_edges = edges.copy() 
-    print("AD-HOC MONTE CARLO")
-    for id in group_ids:
-        num_nodes = len(temp_nodes)
-        temp_nodes, temp_edges = scramble_network(temp_nodes, temp_edges) 
-        print("After scrambling") 
-        print(temp_edges)
-        temp_num_nodes = len(temp_nodes.keys()) 
-        start, goal = temp_nodes['A'], temp_nodes['G']
-        if num_nodes == temp_num_nodes:
-            temp_path, temp_distance = mcts(start, goal)
-            delays.append(packet_group_transmission(temp_path, packets, id)) 
-            if path is None:
-                path = temp_path 
-                distance = temp_distance 
-            else:
-                if temp_path != path:
-                    print("New path found!")
-                    print("Old Distance " + str(distance) + " | Old path: ", end="")
-                    print_path(path) 
-                    print("New distance: " + str(temp_distance) + " | New path: ", end="")
-                    print_path(temp_path)
-                    path = temp_path 
-                    distance = temp_distance
-        else:
-            print("Node removed") 
-            temp_path, temp_distance = mcts(start, goal)
-            delays.append(packet_group_transmission(temp_path, packets, id))
-    print_results(path, packets, distance, delays)
-    path = [] 
-    reset_packets(packets)
-    distance = 0
-    delays = [] 
     
-    # running CSPF
-    temp_nodes = nodes.copy() 
-    temp_edges = edges.copy() 
-    print("AD-HOC CSPF")
-    for id in group_ids:
-        num_nodes = len(temp_nodes)
-        temp_nodes, temp_edges = scramble_network(temp_nodes, temp_edges) 
-        print("After scrambling") 
-        print(temp_edges)
-        temp_num_nodes = len(temp_nodes.keys()) 
-        start, goal = temp_nodes['A'], temp_nodes['G']
-        if num_nodes == temp_num_nodes:
-            temp_path, temp_distance = cspf_backtracking(start, goal, temp_nodes)
-            delays.append(packet_group_transmission(temp_path, packets, id)) 
-            if path is None:
-                path = temp_path 
-                distance = temp_distance 
-            else:
-                if temp_path != path:
-                    print("New path found!")
-                    print("Old Distance " + str(distance) + " | Old path: ", end="")
-                    print_path(path) 
-                    print("New distance: " + str(temp_distance) + " | New path: ", end="")
-                    print_path(temp_path)
-                    path = temp_path 
-                    distance = temp_distance
-        else:
-            print("Node removed") 
-            temp_path, temp_distance = cspf_backtracking(start, goal, temp_nodes)
-            delays.append(packet_group_transmission(temp_path, packets, id))
-    print_results(path, packets, distance, delays)
-    path = [] 
-    reset_packets(packets)
-    distance = 0
-    delays = [] 
+def run_ad_hoc_simulation(network, packet_cluster):
+    nodes, edges = network()
+    start, goal = nodes['A'], nodes['G']
+    group_ids = [] 
+    packet_cluster_copy = packet_cluster.copy() 
+    packets = packet_cluster.copy() 
+    for p in packet_cluster_copy:
+        packets.extend(p.create_children()) 
+        group_ids.append(p.gid)
 
-    # running Genetic Algorithm
-    temp_nodes = nodes.copy() 
-    temp_edges = edges.copy() 
-    print("AD-HOC GENETIC ALGORITHMS")
-    for id in group_ids:
-        num_nodes = len(temp_nodes)
-        temp_nodes, temp_edges = scramble_network(temp_nodes, temp_edges) 
-        print("After scrambling") 
-        print(temp_edges)
-        temp_num_nodes = len(temp_nodes.keys()) 
-        start, goal = temp_nodes['A'], temp_nodes['G']
-        if num_nodes == temp_num_nodes:
-            temp_path, temp_distance = genetic_algorithm(nodes, start, goal)
-            delays.append(packet_group_transmission(temp_path, packets, id)) 
-            if path is None:
-                path = temp_path 
-                distance = temp_distance 
-            else:
-                if temp_path != path:
-                    print("New path found!")
-                    print("Old Distance " + str(distance) + " | Old path: ", end="")
-                    print_path(path) 
-                    print("New distance: " + str(temp_distance) + " | New path: ", end="")
-                    print_path(temp_path)
-                    path = temp_path 
-                    distance = temp_distance
-        else:
-            print("Node removed") 
-            temp_path, temp_distance = genetic_algorithm(nodes, start, goal)
-            delays.append(packet_group_transmission(temp_path, packets, id))
+    # Running all algorithms
+    run_ad_hoc_algorithm("UNIFORM COST SEARCH", start, goal, uniform_cost_search, nodes, edges, group_ids, packets)
+    run_ad_hoc_algorithm("A STAR SEARCH", start, goal, a_star_search, nodes, edges, group_ids, packets, a_star_heuristic)
+    run_ad_hoc_algorithm("A STAR (DISTANCE) SEARCH", start, goal, a_star_search, nodes, edges, group_ids, packets, a_star_d_heuristic)
+    run_ad_hoc_algorithm("GREEDY BEST FIRST SEARCH", start, goal, gbfs, nodes, edges, group_ids, packets, gbfs_distance_heuristic)
+    run_ad_hoc_algorithm("GREEDY BEST FIRST (COMBINED) SEARCH", start, goal, gbfs, nodes, edges, group_ids, packets, gbfs_combined_heuristic)
+    run_ad_hoc_algorithm("MONTE CARLO TREE SEARCH", start, goal, mcts, nodes, edges, group_ids, packets)
+    run_ad_hoc_algorithm("CSPF", start, goal, cspf_backtracking, nodes, edges, group_ids, packets, nodes)
+    run_ad_hoc_algorithm("GENETIC ALGORITHM", start, goal, genetic_algorithm, nodes, edges, group_ids, packets, nodes)
+
+def print_results():
+    if static_network_results:
+        headers = ["Algorithm", "Path", "Distance", "Delay", "Total Time"] 
+        rows = [] 
+        for alg, result in static_network_results.items():
+            rows.append([alg, print_path(result['path']), result['distance'], result['total_delay'], result['total_time']]) 
+        print(tabulate(rows, headers=headers, tablefmt="grid"))
+
+    if dynamic_network_results:
+        headers = ["Algorithm", "Path", "Distance", "Delay", "Total Time", "Former Paths"]
+        rows = [] 
+        for alg, result in dynamic_network_results.items(): 
+            rows.append([alg, print_path(result['path']), result['distance'], result['total_delay'], result['total_time'], result['old_paths']])
+        print(tabulate(rows, headers=headers, tablefmt="grid"))
+
+    if ad_hoc_network_results:
+        headers = ["Algorithm", "Path", "Distance", "Delay", "Total Time", "Former Paths", "Removed Nodes"]
+        rows = []
+        for alg, result in ad_hoc_network_results.items():
+            rows.append([alg, print_path(result['path']), result['distance'], result['total_delay'], result['total_time'], result['old_paths'], result['removed_nodes']]) 
+        print(tabulate(rows, headers=headers, tablefmt="grid"))
 
 if __name__ == "__main__":
     '''
@@ -598,28 +323,36 @@ if __name__ == "__main__":
     networks = [network1a, network1b, network2a, network3a]
     text = ['First', 'Second', 'Third', "Fourth"]
 
- 
     # Static Simulations
+    print("============================================================")
+    print("                  Running Static Networks")
+    print("============================================================")
     for i in range(len(text)):
-        print("===========================================")
-        print("          Running " + text[i] + " network")
-        print("===========================================")
+        print(" Running " + text[i] + " static network... ")
         run_simulation(networks[i], packets)
+        print_results()
+    static_network_results.clear()
 
     # Dynamic simulations
+    print("============================================================")
+    print("                  Running Dynamic Networks")
+    print("============================================================")
     for i in range(len(text)):
-        print("===========================================")
-        print("    Running " + text[i] + " dynamic network")
-        print("===========================================")
-        run_simulation(networks[i], packets)
+        print()
+        print(" Running " + text[i] + " dynamic network... ")
+        print("============================================")
+        run_dynamic_simulation(networks[i], packets)
+        print_results()
+    dynamic_network_results.clear()
 
-    '''
     # Ad-Hoc Simulations
+    print("============================================================")
+    print("                  Running Ad-Hoc Networks")
+    print("============================================================")
     for i in range(len(text)):
-        print("===========================================")
-        print("    Running " + text[i] + " ad-hoc network")
-        print("===========================================")
+        print(" Running " + text[i] + " ad-hoc network... ")
         run_ad_hoc_simulation(networks[i], packets)
-    '''
+        print_results()
+
 
 

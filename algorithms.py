@@ -4,7 +4,6 @@ import heapq
 import random
 import math
 
-
 BANDWIDTH = 10
 
 '''
@@ -110,7 +109,7 @@ def gbfs_combined_heuristic(node, goal):
     traffic_intensity = 1 + node.traffic / BANDWIDTH 
     delay_penalty = node.delay 
     estimated_dist = min(node.neighbors.values()) 
-    return estimated_dist + (delay_penalty * traffic_intensity)
+    return estimated_dist + (delay_penalty + traffic_intensity)
 
 # Greed best first search algorithm
 def gbfs(start, goal, heuristic):
@@ -400,9 +399,9 @@ def mutate(nodes, chromosome, mutation_rate):
         chromosome.delay = delay 
         chromosome.fitness = chromosome.calculate_fitness()
 
-def genetic_algorithm(nodes, start, goal, pop=200, generations=100, init_mutation_rate=0.01):
+def genetic_algorithm(start, goal, nodes, pop=200, generations=100, init_mutation_rate=0.01):
     retry_count = 0 
-    max_retries = 4
+    max_retries = 5
     while retry_count < max_retries:
         population = create_initial_population(nodes, start, goal, pop)
         if population:
