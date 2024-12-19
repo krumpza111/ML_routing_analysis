@@ -76,7 +76,7 @@ class Node:
             else:
                 path_cost = self.neighbors[next_node] 
                 packet.delay += (next_node.prop_delay + path_cost)
-        self.traffic += 1 # increases traffic by one for each packet 
+        self.traffic += 2 # increases traffic by one for each packet 
         packet.delay += (self.delay * throughput) + self.traffic
         return
     

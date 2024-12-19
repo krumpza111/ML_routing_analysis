@@ -399,7 +399,7 @@ def mutate(nodes, chromosome, mutation_rate):
         chromosome.delay = delay 
         chromosome.fitness = chromosome.calculate_fitness()
 
-def genetic_algorithm(start, goal, nodes, pop=200, generations=100, init_mutation_rate=0.01):
+def genetic_algorithm(start, goal, nodes, pop=250, generations=100, init_mutation_rate=0.01):
     retry_count = 0 
     max_retries = 5
     while retry_count < max_retries:
